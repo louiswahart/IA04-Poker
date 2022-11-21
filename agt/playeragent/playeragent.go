@@ -4,52 +4,35 @@ import (
 	"log"
 	"math"
 	"math/rand"
-	"time"
+
+	"gitlab.utc.fr/nivoixpa/ia04-poker/agt"
 )
-
-type Cards struct {
-	value int
-	color string
-}
-
-type RequestMessage struct {
-	instruction string
-	cards       []Cards
-	currentBet  int
-	order       int
-	nbTokens    int
-}
-
-type PlayerMessage struct {
-	request  RequestMessage
-	response int
-}
 
 // ------ STRUCT ------
 type PlayerAgent struct {
-	ID             int
-	c              chan (PlayerMessage)
-	bluff          int
-	risk           int
-	aggressiveness int
-	timidity       int
+	id             int
+	c              chan (agt.PlayerMessage)
+	bluff          int // Caractéristique décrivant la tendance d'un joueur à jouer (continuer de miser) alors qu'il ne devrait peut être pas
+	risk           int // Caractéristique décrivant la tendance d'un joueur à jouer (continuer de miser) selon la puissance de sa main (plus risk est elevé, plus il jouera même avec une main faible)
+	aggressiveness int // Caractéristique décrivant à quel point le joueur fait monter la mise quand il joue
+	timidity       int // Caractéristique décrivant la tendance d'un joueur à juste suivre la mise actuelle ou à augmenter la mise.
 	currentTokens  int
 	totalTokens    int
-	cards          []Cards
+	cards          []agt.Card
 	currentBet     int
 }
 
 // ------ CONSTRUCTOR ------
-func NewPlayerAgent(id int, c chan (PlayerMessage), bluff int, risk int, aggressiveness int, timidity int) *PlayerAgent {
-	return &PlayerAgent{ID: id, c: c, bluff: bluff, risk: risk, aggressiveness: aggressiveness, timidity: timidity}
+func NewPlayerAgent(id int, c chan (agt.PlayerMessage), bluff int, risk int, aggressiveness int, timidity int) *PlayerAgent {
+	return &PlayerAgent{id: id, c: c, bluff: bluff, risk: risk, aggressiveness: aggressiveness, timidity: timidity}
 }
 
 // ------ GETTER ------
 func (player *PlayerAgent) Id() int {
-	return player.ID
+	return player.id
 }
 
-func (player *PlayerAgent) C() chan (PlayerMessage) {
+func (player *PlayerAgent) C() chan (agt.PlayerMessage) {
 	return player.c
 }
 
@@ -77,16 +60,16 @@ func (player *PlayerAgent) TotalTokens() int {
 	return player.totalTokens
 }
 
-func (player *PlayerAgent) Cards() []Cards {
+func (player *PlayerAgent) Card() []agt.Card {
 	return player.cards
 }
 
 // ------ SETTER ------
 func (player *PlayerAgent) SetId(id int) {
-	player.ID = id
+	player.id = id
 }
 
-func (player *PlayerAgent) SetC(c chan (PlayerMessage)) {
+func (player *PlayerAgent) SetC(c chan (agt.PlayerMessage)) {
 	player.c = c
 }
 
@@ -115,25 +98,24 @@ func (player *PlayerAgent) SetTotalTokens(t int) {
 }
 
 // COPIE OU OK
-func (player *PlayerAgent) SetCards(c []Cards) {
+func (player *PlayerAgent) SetCards(c []agt.Card) {
 	player.cards = c
 }
 
 // ------ UTILITAIRES ------
 
-// Aléatoire avec seed qui change constamment avec le temps
+// Aléatoire
 func getRandom(n int) int {
-	rand.Seed(time.Now().UnixNano())
 	return rand.Intn(n)
 }
 
 // Choix fait lorsque l'on joue une main
 func (player *PlayerAgent) play(currentBet int) int {
-	log.Printf("[Joueur %v] Je joue\n", player.ID)
+	log.Printf("[Joueur %v] Je joue\n", player.id)
 	var mise int
 	if player.currentTokens < currentBet {
 		mise = player.currentTokens
-		log.Printf("[Joueur %v] Je fais tapis, pas assez de jeton pour suivre %v\n", player.ID, mise)
+		log.Printf("[Joueur %v] Je fais tapis, pas assez de jeton pour suivre %v\n", player.id, mise)
 		return mise
 	} else {
 		mise = currentBet - player.currentBet
@@ -141,9 +123,9 @@ func (player *PlayerAgent) play(currentBet int) int {
 
 	// Usage de la timidité, si trop timide alors joue la mise minimum
 	r := getRandom(100)
-	log.Printf("[Joueur %v] Est ce que je vais augmenter la mise, nombre aléatoire de %v\n", player.ID, r)
+	log.Printf("[Joueur %v] Est ce que je vais augmenter la mise, nombre aléatoire de %v\n", player.id, r)
 	if player.timidity > r {
-		log.Printf("[Joueur %v] J'augmente la mise\n", player.ID)
+		log.Printf("[Joueur %v] J'augmente la mise\n", player.id)
 
 		// Usage de l'agressivité pour savoir de combien on augmente la mise
 		// Utilisation de l'aléatoire pour trouver un nombre pour savoir si tapis ou non
@@ -155,10 +137,10 @@ func (player *PlayerAgent) play(currentBet int) int {
 			modif = -modif
 		}
 
-		log.Printf("[Joueur %v] Vais je faire tapis ? nombre aléatoire de %v | modif de %v\n", player.ID, r, modif)
+		log.Printf("[Joueur %v] Vais je faire tapis ? nombre aléatoire de %v | modif de %v\n", player.id, r, modif)
 		// Verification si le joueur fait un tapis ou pas
 		if player.aggressiveness+modif > r {
-			log.Printf("[Joueur %v] Je fais tapis, aggresivité de %v\n", player.ID, player.aggressiveness+modif)
+			log.Printf("[Joueur %v] Je fais tapis, aggresivité de %v\n", player.id, player.aggressiveness+modif)
 			mise = player.currentTokens
 			// S'il ne fait pas tapis alors ajout de jetons en fonction de son agresivité (+ modif aléatoire)
 		} else {
@@ -189,8 +171,8 @@ func (player *PlayerAgent) Start() {
 	for m := range player.c {
 
 		// Réalisation du traitement selon l'instruction
-		instruction := m.request.instruction
-		log.Printf("[Joueur %v] Instruction reçu : %v\n", player.ID, instruction)
+		instruction := m.Request.Instruction
+		log.Printf("[Joueur %v] Instruction reçu : %v\n", player.id, instruction)
 		switch instruction {
 
 		// Cas de la distribution
@@ -198,9 +180,9 @@ func (player *PlayerAgent) Start() {
 		// Ajout des jetons de la partie précédente au total des jetons
 		// Récupération du nombre de jeton pour la nouvelle partie
 		case "distrib":
-			player.cards = m.request.cards
+			player.cards = m.Request.Cards
 			player.totalTokens += player.currentTokens
-			player.currentTokens = m.request.nbTokens
+			player.currentTokens = m.Request.NbTokens
 			player.currentBet = 0
 
 		// Cas du tour de jeu
@@ -209,26 +191,26 @@ func (player *PlayerAgent) Start() {
 			mise := -1
 			isPlayed := false
 			// Si la mise en cours est la même que la notre, de base on check
-			if player.currentBet == m.request.currentBet {
+			if player.currentBet == m.Request.CurrentBet {
 				mise = 0
 			}
 
 			//Si plus de jeton
 			if player.currentTokens == 0 {
-				m.response = -1
+				m.Response = -1
 				player.c <- m
-				log.Printf("[Joueur %v] Plus de jeton pour jouer\n", player.ID)
+				log.Printf("[Joueur %v] Plus de jeton pour jouer\n", player.id)
 				break
 			}
 
 			// Si dernier à jouer et que personne à misé (check)
 			// Récupération d'un nombre aléatoire, si le bluff est supérieur alors bluff en jouant
-			if m.request.order == 5 && player.currentBet == m.request.currentBet {
+			if m.Request.Order == 5 && player.currentBet == m.Request.CurrentBet {
 				r := getRandom(100)
-				log.Printf("[Joueur %v] Dernier à jouer, tout le monde a check, nombre aléatoire de %v\n", player.ID, r)
+				log.Printf("[Joueur %v] Dernier à jouer, tout le monde a check, nombre aléatoire de %v\n", player.id, r)
 				if player.bluff > r {
-					log.Printf("[Joueur %v] Je bluff\n", player.ID)
-					mise = player.play(m.request.currentBet)
+					log.Printf("[Joueur %v] Je bluff\n", player.id)
+					mise = player.play(m.Request.CurrentBet)
 					isPlayed = true
 				}
 			}
@@ -236,53 +218,53 @@ func (player *PlayerAgent) Start() {
 			// Si on a pas encore trouver la mise
 			if !isPlayed {
 				// Récupération du score de la main et du score maximal possible (pour le nombre de cartes pour le tour)
-				score := CheckCombinations(player.cards, m.request.cards)
-				max := MaxRange(len(player.cards) + len(m.request.cards))
-				log.Printf("[Joueur %v] Mon score actuel : %v | Le max que je peux avoir : %v\n", player.ID, score, max)
+				score := CheckCombinations(player.cards, m.Request.Cards)
+				max := MaxRange(len(player.cards) + len(m.Request.Cards))
+				log.Printf("[Joueur %v] Mon score actuel : %v | Le max que je peux avoir : %v\n", player.id, score, max)
 
 				// Vérification de l'attribut de risk pour savoir si on joue ou pas
 				min := (1.0 - (float64(player.risk) / 100.0)) * float64(max)
-				log.Printf("[Joueur %v] Mon score doit être d'au moins : %v pour que je joue\n", player.ID, min)
+				log.Printf("[Joueur %v] Mon score doit être d'au moins : %v pour que je joue\n", player.id, min)
 				if score >= min {
-					mise = player.play(m.request.currentBet)
+					mise = player.play(m.Request.CurrentBet)
 					// Si je ne joue pas, vérification si je bluff, critère de bluff divisé par 4
 				} else {
 					r := getRandom(100)
-					log.Printf("[Joueur %v] Normalement je ne joue pas, est ce que je bluff ? nombre aléatoire de %v\n", player.ID, r)
+					log.Printf("[Joueur %v] Normalement je ne joue pas, est ce que je bluff ? nombre aléatoire de %v\n", player.id, r)
 					if player.bluff/4 > r {
-						log.Printf("[Joueur %v] Je bluff\n", player.ID)
-						mise = player.play(m.request.currentBet)
+						log.Printf("[Joueur %v] Je bluff\n", player.id)
+						mise = player.play(m.Request.CurrentBet)
 					}
 				}
 			}
 
 			// Envoi de la mise à la table (-1 = couche, 0 = check, >0 = mise)
-			m.response = mise
+			m.Response = mise
 			player.currentTokens -= mise
 			player.currentBet += mise
 			player.c <- m
-			log.Printf("[Joueur %v] Mise ajoutée : %v | Mise totale : %v\n", player.ID, mise, player.currentBet)
+			log.Printf("[Joueur %v] Mise ajoutée : %v | Mise totale : %v\n", player.id, mise, player.currentBet)
 
 		// Cas d'une mise obligatoire
 		case "mise":
-			mise := m.request.currentBet
+			mise := m.Request.CurrentBet
 			if mise > player.currentTokens {
 				mise = player.currentTokens
 			}
 			// Envoi de la mise à la table
-			m.response = mise
+			m.Response = mise
 			player.currentTokens -= mise
 			player.currentBet += mise
 			player.c <- m
-			log.Printf("[Joueur %v] Mise ajoutée : %v | Mise totale : %v\n", player.ID, mise, player.currentBet)
+			log.Printf("[Joueur %v] Mise ajoutée : %v | Mise totale : %v\n", player.id, mise, player.currentBet)
 
 		// Cas d'un gain
 		case "gain":
-			log.Printf("[Joueur %v] Gain reçu : %v\n", player.ID, m.request.nbTokens)
-			player.currentTokens += m.request.nbTokens
+			log.Printf("[Joueur %v] Gain reçu : %v\n", player.id, m.Request.NbTokens)
+			player.currentTokens += m.Request.NbTokens
 			player.currentBet = 0
 		}
 	}
 	// Arret de l'agent
-	log.Printf("[Joueur %v] Arret\n", player.ID)
+	log.Printf("[Joueur %v] Arret\n", player.id)
 }
