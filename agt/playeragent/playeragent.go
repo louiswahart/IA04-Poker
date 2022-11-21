@@ -177,11 +177,9 @@ func (player *PlayerAgent) Start() {
 
 		// Cas de la distribution
 		// Récupération des deux cartes
-		// Ajout des jetons de la partie précédente au total des jetons
 		// Récupération du nombre de jeton pour la nouvelle partie
 		case "distrib":
 			player.cards = m.Request.Cards
-			player.totalTokens += player.currentTokens
 			player.currentTokens = m.Request.NbTokens
 			player.currentBet = 0
 
@@ -262,6 +260,12 @@ func (player *PlayerAgent) Start() {
 		case "gain":
 			log.Printf("[Joueur %v] Gain reçu : %v\n", player.id, m.Request.NbTokens)
 			player.currentTokens += m.Request.NbTokens
+			player.currentBet = 0
+
+		// Fin de la partie, ajout des jetons de la partie précédente au total des jetons
+		case "fin":
+			player.totalTokens += player.currentTokens
+			player.currentTokens = 0
 			player.currentBet = 0
 		}
 	}
