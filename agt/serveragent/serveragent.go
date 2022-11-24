@@ -1,41 +1,32 @@
 package serveragent
 
-import "sync"
+import (
+	"math/rand"
+	"sync"
+
+	"gitlab.utc.fr/nivoixpa/ia04-poker/agt/playeragent"
+	"gitlab.utc.fr/nivoixpa/ia04-poker/agt/tableagent"
+)
+
+const PlayersPerTable = 5
 
 // ------ STRUCT ------
-// type PlayerAgent struct {
-// 	id             int
-// 	c              chan (agt.PlayerMessage)
-// 	bluff          int // Caractéristique décrivant la tendance d'un joueur à jouer (continuer de miser) alors qu'il ne devrait peut être pas
-// 	risk           int // Caractéristique décrivant la tendance d'un joueur à jouer (continuer de miser) selon la puissance de sa main (plus risk est elevé, plus il jouera même avec une main faible)
-// 	aggressiveness int // Caractéristique décrivant à quel point le joueur fait monter la mise quand il joue
-// 	timidity       int // Caractéristique décrivant la tendance d'un joueur à juste suivre la mise actuelle ou à augmenter la mise.
-// 	currentTokens  int
-// 	totalTokens    int
-// 	cards          []agt.Card
-// 	currentBet     int
-// }
-
 type ServerAgent struct {
 	id       int
 	nbTables int
 	nbGames  int
+	c        chan int
 	wg       *sync.WaitGroup
+	players  []playeragent.PlayerAgent
+	tables   []tableagent.TableAgent
 }
 
 // ------ CONSTRUCTOR ------
-// func NewPlayerAgent(id int, c chan (agt.PlayerMessage), bluff int, risk int, aggressiveness int, timidity int) *PlayerAgent {
-// 	return &PlayerAgent{id: id, c: c, bluff: bluff, risk: risk, aggressiveness: aggressiveness, timidity: timidity}
-// }
-
 func NewServerAgent(id int, nbTables int, nbGames int, wg *sync.WaitGroup) *ServerAgent {
-	return &ServerAgent{id: id, nbTables: nbTables, nbGames: nbGames, wg: wg}
+	return &ServerAgent{id: id, nbTables: nbTables, nbGames: nbGames, c: make(chan int), wg: wg, players: make([]playeragent.PlayerAgent, nbTables*PlayersPerTable), tables: make([]tableagent.TableAgent, nbTables)}
 }
 
-// func (player *PlayerAgent) Id() int {
-// 	return player.id
-// }
-
+// ------ GETTER ------
 func (server *ServerAgent) Id() int {
 	return server.id
 }
@@ -50,4 +41,38 @@ func (server *ServerAgent) NbGames() int {
 
 func (server *ServerAgent) Wg() *sync.WaitGroup {
 	return server.wg
+}
+
+func (server *ServerAgent) Start() {
+	// Créer les PlayerAgents
+	for i := 0; i < server.nbTables*PlayersPerTable; i++ {
+		server.players[i] = *RandomPlayerAgent(i)
+	}
+
+	// Créer les TableAgents et y assigner les PlayerAgents
+	for i := 0; i < server.nbTables; i++ {
+		// Génération des joueurs de chaque table
+		players := server.players[i*PlayersPerTable : (i+1)*PlayersPerTable]
+		server.tables[i] = *tableagent.NewTableAgent(i, server.c, server.wg, players)
+	}
+
+	// Démarrer serveur http (pour l'affichage web)
+	// Lancer les TableAgents
+	for _, table := range server.tables {
+		table.Start()
+		server.wg.Add(1)
+	}
+	server.wg.Wait()
+
+	// Synchroniser les TableAgents tour après tour + envoyer requêtes web pour affichage
+	for turn := 0; turn < 3; turn++ {
+		server.c <- turn
+		server.wg.Wait()
+	}
+	server.wg.Wait()
+	// Récupérer la liste des TableAgents et recréer les TableAgents
+}
+
+func RandomPlayerAgent(id int) *playeragent.PlayerAgent {
+	return playeragent.NewPlayerAgent(id, nil, rand.Intn(100), rand.Intn(100), rand.Intn(100), rand.Intn(100))
 }
