@@ -59,7 +59,7 @@ func (server *ServerAgent) Start() {
 	// Démarrer serveur http (pour l'affichage web)
 	// Lancer les TableAgents
 	for _, table := range server.tables {
-		table.Start()
+		table.Start(0)
 		server.wg.Add(1)
 	}
 	server.wg.Wait()
