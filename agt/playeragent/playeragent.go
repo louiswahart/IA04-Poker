@@ -6,6 +6,7 @@ import (
 	"math/rand"
 
 	"gitlab.utc.fr/nivoixpa/ia04-poker/agt"
+	"gitlab.utc.fr/nivoixpa/ia04-poker/rules"
 )
 
 // ------ STRUCT ------
@@ -216,14 +217,14 @@ func (player *PlayerAgent) Start() {
 			// Si on a pas encore trouver la mise
 			if !isPlayed {
 				// Récupération du score de la main et du score maximal possible (pour le nombre de cartes pour le tour)
-				score := CheckCombinations(player.cards, m.Request.Cards)
-				max := MaxRange(len(player.cards) + len(m.Request.Cards))
+				score := rules.CheckCombinations(player.cards, m.Request.Cards)
+				max := rules.MaxRange(len(player.cards) + len(m.Request.Cards))
 				log.Printf("[Joueur %v] Mon score actuel : %v | Le max que je peux avoir : %v\n", player.id, score, max)
 
 				// Vérification de l'attribut de risk pour savoir si on joue ou pas
 				min := (1.0 - (float64(player.risk) / 100.0)) * float64(max)
 				log.Printf("[Joueur %v] Mon score doit être d'au moins : %v pour que je joue\n", player.id, min)
-				if score >= min {
+				if float64(score) >= min {
 					mise = player.play(m.Request.CurrentBet)
 					// Si je ne joue pas, vérification si je bluff, critère de bluff divisé par 4
 				} else {

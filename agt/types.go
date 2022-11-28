@@ -1,9 +1,18 @@
 package agt
 
 // Structure de carte
+type CardSuit int
+
+const (
+	Club CardSuit = iota
+	Diamond
+	Heart
+	Spades
+)
+
 type Card struct {
 	Value int
-	Color string
+	Color CardSuit
 }
 
 // Structure des requêtes dans les messages
