@@ -65,6 +65,10 @@ func (player *PlayerAgent) Card() []agt.Card {
 	return player.cards
 }
 
+func (player *PlayerAgent) CurrentBet() int {
+	return player.currentBet
+}
+
 // ------ SETTER ------
 func (player *PlayerAgent) SetId(id int) {
 	player.id = id
@@ -116,7 +120,7 @@ func (player *PlayerAgent) play(currentBet int) int {
 	var mise int
 	if player.currentTokens < currentBet {
 		mise = player.currentTokens
-		log.Printf("[Joueur %v] Je fais tapis, pas assez de jeton pour suivre %v\n", player.id, mise)
+		log.Printf("[Joueur %v] Je fais tapis, pas assez de jeton pour suivre\n", player.id)
 		return mise
 	} else {
 		mise = currentBet - player.currentBet
@@ -124,8 +128,8 @@ func (player *PlayerAgent) play(currentBet int) int {
 
 	// Usage de la timidité, si trop timide alors joue la mise minimum
 	r := getRandom(100)
-	log.Printf("[Joueur %v] Est ce que je vais augmenter la mise, nombre aléatoire de %v\n", player.id, r)
-	if player.timidity > r {
+	log.Printf("[Joueur %v] Est ce que je vais augmenter la mise, nombre aléatoire de %v | ma timidité : %v\n", player.id, r, player.timidity)
+	if player.timidity < r {
 		log.Printf("[Joueur %v] J'augmente la mise\n", player.id)
 
 		// Usage de l'agressivité pour savoir de combien on augmente la mise
@@ -138,13 +142,14 @@ func (player *PlayerAgent) play(currentBet int) int {
 			modif = -modif
 		}
 
-		log.Printf("[Joueur %v] Vais je faire tapis ? nombre aléatoire de %v | modif de %v\n", player.id, r, modif)
+		log.Printf("[Joueur %v] Vais je faire tapis ? nombre aléatoire de %v | mon aggressivité avec modif : %v\n", player.id, r, player.aggressiveness+modif)
 		// Verification si le joueur fait un tapis ou pas
 		if player.aggressiveness+modif > r {
-			log.Printf("[Joueur %v] Je fais tapis, aggresivité de %v\n", player.id, player.aggressiveness+modif)
+			log.Printf("[Joueur %v] Je fais tapis\n", player.id)
 			mise = player.currentTokens
 			// S'il ne fait pas tapis alors ajout de jetons en fonction de son agresivité (+ modif aléatoire)
 		} else {
+			log.Printf("[Joueur %v] Je ne fais pas tapis\n", player.id)
 			// Création du coefficient de jeton restant ajouté à la mise
 			// Vérification si le coefficient n'est pas nul ou négatif
 			var coeff float64
@@ -176,13 +181,17 @@ func (player *PlayerAgent) Start() {
 		log.Printf("[Joueur %v] Instruction reçu : %v\n", player.id, instruction)
 		switch instruction {
 
+		// Cas d'une nouvelle partie'
+		// Récupération du nombre de jeton pour la nouvelle partie
+		case "nouvelle":
+			player.currentTokens = m.Request.NbTokens
+			player.currentBet = 0
+
 		// Cas de la distribution
 		// Récupération des deux cartes
 		// Récupération du nombre de jeton pour la nouvelle partie
 		case "distrib":
 			player.cards = m.Request.Cards
-			player.currentTokens = m.Request.NbTokens
-			player.currentBet = 0
 
 		// Cas du tour de jeu
 		case "joue":
@@ -206,11 +215,13 @@ func (player *PlayerAgent) Start() {
 			// Récupération d'un nombre aléatoire, si le bluff est supérieur alors bluff en jouant
 			if m.Request.Order == 5 && player.currentBet == m.Request.CurrentBet {
 				r := getRandom(100)
-				log.Printf("[Joueur %v] Dernier à jouer, tout le monde a check, nombre aléatoire de %v\n", player.id, r)
+				log.Printf("[Joueur %v] Dernier à jouer, tout le monde a check, nombre aléatoire de %v | mon bluff : %v\n", player.id, r, player.bluff)
 				if player.bluff > r {
 					log.Printf("[Joueur %v] Je bluff\n", player.id)
 					mise = player.play(m.Request.CurrentBet)
 					isPlayed = true
+				} else {
+					log.Printf("[Joueur %v] Je ne bluff pas\n", player.id)
 				}
 			}
 
@@ -229,25 +240,32 @@ func (player *PlayerAgent) Start() {
 					// Si je ne joue pas, vérification si je bluff, critère de bluff divisé par 4
 				} else {
 					r := getRandom(100)
-					log.Printf("[Joueur %v] Normalement je ne joue pas, est ce que je bluff ? nombre aléatoire de %v\n", player.id, r)
+					log.Printf("[Joueur %v] Normalement je ne joue pas, est ce que je bluff ? nombre aléatoire de %v | mon bluff ajusté : %v\n", player.id, r, player.bluff/4)
 					if player.bluff/4 > r {
 						log.Printf("[Joueur %v] Je bluff\n", player.id)
 						mise = player.play(m.Request.CurrentBet)
+					} else {
+						log.Printf("[Joueur %v] Je ne bluff pas\n", player.id)
 					}
 				}
 			}
 
 			// Envoi de la mise à la table (-1 = couche, 0 = check, >0 = mise)
 			m.Response = mise
-			player.currentTokens -= mise
-			player.currentBet += mise
+			if mise == -1 {
+				log.Printf("[Joueur %v] Je me couche\n", player.id)
+			} else {
+				player.currentTokens -= mise
+				player.currentBet += mise
+				log.Printf("[Joueur %v] Mise ajoutée : %v | Mise totale : %v\n", player.id, mise, player.currentBet)
+			}
 			player.c <- m
-			log.Printf("[Joueur %v] Mise ajoutée : %v | Mise totale : %v\n", player.id, mise, player.currentBet)
 
 		// Cas d'une mise obligatoire
 		case "mise":
 			mise := m.Request.CurrentBet
 			if mise > player.currentTokens {
+				log.Printf("[Joueur %v] Je dois faire tapis\n", player.id)
 				mise = player.currentTokens
 			}
 			// Envoi de la mise à la table
@@ -261,7 +279,6 @@ func (player *PlayerAgent) Start() {
 		case "gain":
 			log.Printf("[Joueur %v] Gain reçu : %v\n", player.id, m.Request.NbTokens)
 			player.currentTokens += m.Request.NbTokens
-			player.currentBet = 0
 
 		// Fin de la partie, ajout des jetons de la partie précédente au total des jetons
 		case "fin":
