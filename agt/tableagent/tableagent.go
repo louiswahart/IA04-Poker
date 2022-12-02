@@ -18,11 +18,12 @@ type TableAgent struct {
 	players     []playeragent.PlayerAgent // Peut être besoin d'utiliser des pointeurs ?
 	currentTurn int
 	cp          []chan agt.PlayerMessage
+	gameNb      int
 }
 
 // ------ CONSTRUCTOR ------
 func NewTableAgent(id int, c <-chan int, wg *sync.WaitGroup, players []playeragent.PlayerAgent) *TableAgent {
-	return &TableAgent{id: id, c: c, wg: wg, players: players, currentTurn: 0, cp: make([]chan agt.PlayerMessage, len(players))}
+	return &TableAgent{id: id, c: c, wg: wg, players: players, currentTurn: 0, cp: make([]chan agt.PlayerMessage, len(players)), gameNb: 0}
 }
 
 // ------ GETTER ------
@@ -38,30 +39,37 @@ func (table *TableAgent) CurrentTurn() int {
 	return table.currentTurn
 }
 
-func (table *TableAgent) Start(roundNb int) {
+func (table *TableAgent) Start() {
 	for i, p := range table.players {
 		table.cp[i] = make(chan agt.PlayerMessage)
 		p.SetC(table.cp[i])
 	}
 
-	// Définir montant petite et grosse blindes
-	smallBlind := baseBlind * roundNb / 10
+	table.wg.Done()
 
-	deck := table.startNewPot(roundNb)
-
-	// Faire le tour de table pour les mises / Preflop
-	for i, p := range table.players {
-		p.C() <- agt.PlayerMessage{Request: agt.RequestMessage{Instruction: "joue",
-			Cards: nil, CurrentBet: smallBlind * 2, Order: i + 2, NbTokens: p.CurrentTokens()}, Response: 0}
-	}
+	deck := []agt.Card{}
 
 	// Attendre prochains tours
-	for <-table.c > -1 {
-		table.doNextTurn(deck)
+	for turnNb := range table.c {
+		if turnNb < 0 {
+			return
+		}
+		// On met à jour le tour actuel récupéré à travers le channel
+		table.currentTurn = turnNb
+		if turnNb == 0 {
+			table.gameNb++
+			table.doPreFlop()
+			deck = table.startNewPot(table.gameNb)
+		} else {
+			table.doTurn(deck)
+		}
 	}
 }
 
-func (table *TableAgent) doNextTurn(deck []agt.Card) {
+func (table *TableAgent) doTurn(deck []agt.Card) {
+	if len(deck) == 0 {
+		return
+	}
 	cards := []agt.Card{}
 
 	switch table.currentTurn {
@@ -73,6 +81,8 @@ func (table *TableAgent) doNextTurn(deck []agt.Card) {
 		cards = deck[:5]
 	}
 
+	// Code non fini, le code actuel s'arrête après un tour
+	// Mais tant que tout le monde n'a pas misé ou s'est couché, le tour ne doit pas se finir
 	for i, p := range table.players {
 		p.C() <- agt.PlayerMessage{Request: agt.RequestMessage{Instruction: "joue",
 			Cards: cards, CurrentBet: 0, Order: i + 2, NbTokens: p.CurrentTokens()}, Response: 0}
@@ -91,16 +101,16 @@ func (table *TableAgent) startNewPot(roundNb int) []agt.Card {
 	smallBlind := baseBlind * roundNb / 10
 	bigBlind := 2 * smallBlind
 
+	// Mises obligatoires des petites et grosses blindes
+	table.players[0].C() <- agt.PlayerMessage{Request: agt.RequestMessage{Instruction: "mise",
+		Cards: nil, CurrentBet: smallBlind, Order: 0, NbTokens: 0}, Response: 0}
+	table.players[1].C() <- agt.PlayerMessage{Request: agt.RequestMessage{Instruction: "mise",
+		Cards: nil, CurrentBet: bigBlind, Order: 1, NbTokens: 0}, Response: 0}
+
 	// Distribuer les cartes aux joueurs
 	for i, p := range table.players {
-		if i == 0 {
-			p.SetCurrentTokens(p.CurrentTokens() - smallBlind)
-		}
-		if i == 1 {
-			p.SetCurrentTokens(p.CurrentTokens() - bigBlind)
-		}
 		p.C() <- agt.PlayerMessage{Request: agt.RequestMessage{Instruction: "distrib",
-			Cards: selection[i*2 : (i+1)*2], CurrentBet: 0, Order: i + 2, NbTokens: p.CurrentTokens()}, Response: 0}
+			Cards: selection[i*2 : (i+1)*2], CurrentBet: 0, Order: (i - 2) % len(table.players), NbTokens: p.CurrentTokens()}, Response: 0}
 	}
 	return selection[len(selection)-5:]
 }
@@ -120,4 +130,16 @@ func (table *TableAgent) newShuffledDeck() (deck []agt.Card) {
 	rand.Shuffle(len(deck), func(i, j int) { deck[i], deck[j] = deck[j], deck[i] })
 
 	return deck
+}
+
+func (table *TableAgent) doPreFlop() {
+	// Définir montant petite et grosse blindes
+	bigBlind := 2 * baseBlind * table.gameNb / 10
+
+	// Faire le tour de table pour les mises / Preflop
+	for i, p := range table.players {
+		p.C() <- agt.PlayerMessage{Request: agt.RequestMessage{Instruction: "joue",
+			Cards: nil, CurrentBet: bigBlind, Order: i + 2, NbTokens: p.CurrentTokens()}, Response: 0}
+	}
+	table.wg.Done()
 }
