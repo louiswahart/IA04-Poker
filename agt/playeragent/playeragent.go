@@ -178,7 +178,7 @@ func (player *PlayerAgent) Start() {
 
 		// Réalisation du traitement selon l'instruction
 		instruction := m.Request.Instruction
-		log.Printf("[Joueur %v] Instruction reçu : %v\n", player.id, instruction)
+		log.Printf("[Joueur %v] Instruction reçue : %v\n", player.id, instruction)
 		switch instruction {
 
 		// Cas d'une nouvelle partie'

@@ -1,6 +1,7 @@
 package tableagent
 
 import (
+	"fmt"
 	"math/rand"
 	"sync"
 
@@ -8,7 +9,7 @@ import (
 	"gitlab.utc.fr/nivoixpa/ia04-poker/agt/playeragent"
 )
 
-var baseBlind = 100
+var baseBlind = 5
 
 // ------ STRUCT ------
 type TableAgent struct {
@@ -40,17 +41,22 @@ func (table *TableAgent) CurrentTurn() int {
 }
 
 func (table *TableAgent) Start() {
-	for i, p := range table.players {
+	fmt.Println("Start de la table", table.id, ", channel:", table.c)
+	for i := range table.players {
 		table.cp[i] = make(chan agt.PlayerMessage)
-		p.SetC(table.cp[i])
+		table.players[i].SetC(table.cp[i])
+		go table.players[i].Start()
+		table.players[i].C() <- agt.PlayerMessage{Request: agt.RequestMessage{Instruction: "nouvelle",
+			Cards: nil, CurrentBet: 0, Order: 1, NbTokens: 10000}, Response: 0}
 	}
-
 	table.wg.Done()
 
 	deck := []agt.Card{}
 
 	// Attendre prochains tours
+	fmt.Println("On attend")
 	for turnNb := range table.c {
+		fmt.Println("On a bien lu le tour:", turnNb)
 		if turnNb < 0 {
 			return
 		}
@@ -58,11 +64,15 @@ func (table *TableAgent) Start() {
 		table.currentTurn = turnNb
 		if turnNb == 0 {
 			table.gameNb++
-			table.doPreFlop()
+			fmt.Println("Avant création du pot")
 			deck = table.startNewPot(table.gameNb)
+			fmt.Println("avant preflop")
+			table.doPreFlop()
 		} else {
 			table.doTurn(deck)
 		}
+		fmt.Println("Juste avant le done")
+		table.wg.Done()
 	}
 }
 
@@ -85,11 +95,10 @@ func (table *TableAgent) doTurn(deck []agt.Card) {
 	// Mais tant que tout le monde n'a pas misé ou s'est couché, le tour ne doit pas se finir
 	for i, p := range table.players {
 		p.C() <- agt.PlayerMessage{Request: agt.RequestMessage{Instruction: "joue",
-			Cards: cards, CurrentBet: 0, Order: i + 2, NbTokens: p.CurrentTokens()}, Response: 0}
+			Cards: cards, CurrentBet: 0, Order: (i - 2) % len(table.players), NbTokens: p.CurrentTokens()}, Response: 0}
 	}
 
 	table.currentTurn++
-	table.wg.Done()
 }
 
 func (table *TableAgent) startNewPot(roundNb int) []agt.Card {
@@ -108,10 +117,12 @@ func (table *TableAgent) startNewPot(roundNb int) []agt.Card {
 		Cards: nil, CurrentBet: bigBlind, Order: 1, NbTokens: 0}, Response: 0}
 
 	// Distribuer les cartes aux joueurs
-	for i, p := range table.players {
-		p.C() <- agt.PlayerMessage{Request: agt.RequestMessage{Instruction: "distrib",
-			Cards: selection[i*2 : (i+1)*2], CurrentBet: 0, Order: (i - 2) % len(table.players), NbTokens: p.CurrentTokens()}, Response: 0}
+	fmt.Println("on distribue les cartes")
+	for i := range table.players {
+		table.players[i].C() <- agt.PlayerMessage{Request: agt.RequestMessage{Instruction: "distrib",
+			Cards: selection[i*2 : (i+1)*2], CurrentBet: 0, Order: (i - 2) % len(table.players), NbTokens: 0}, Response: 0}
 	}
+	fmt.Println("on a fini de distribuer")
 	return selection[len(selection)-5:]
 }
 
@@ -137,9 +148,9 @@ func (table *TableAgent) doPreFlop() {
 	bigBlind := 2 * baseBlind * table.gameNb / 10
 
 	// Faire le tour de table pour les mises / Preflop
-	for i, p := range table.players {
-		p.C() <- agt.PlayerMessage{Request: agt.RequestMessage{Instruction: "joue",
-			Cards: nil, CurrentBet: bigBlind, Order: i + 2, NbTokens: p.CurrentTokens()}, Response: 0}
+	for i := range table.players {
+		fmt.Println("Envoi de message au joueur")
+		table.players[i].C() <- agt.PlayerMessage{Request: agt.RequestMessage{Instruction: "joue",
+			Cards: nil, CurrentBet: bigBlind, Order: i + 2, NbTokens: table.players[i].CurrentTokens()}, Response: 0}
 	}
-	table.wg.Done()
 }
