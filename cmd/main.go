@@ -9,7 +9,7 @@ import (
 
 func main() {
 	var wg sync.WaitGroup
-	serv := serveragent.NewServerAgent(1, 2, 1, &wg)
+	serv := serveragent.NewServerAgent(1, 1, 1, &wg)
 	go serv.Start()
 	fmt.Scanln()
 }
