@@ -1,7 +1,6 @@
 package tableagent
 
 import (
-	"fmt"
 	"log"
 	"math/rand"
 	"sync"
@@ -24,7 +23,7 @@ type TableAgent struct {
 	currentBet       int                       // La mise actuelle de la table
 	currentTableBets []int                     // La liste des mises actuelles de chaque joueur
 	smallBlindIndex  int                       // L'indice auquel se trouve la small blind (augmente de 1 à chaque nouvelle partie)
-	totalPot         int
+	totalPot         int                       // Argent total au milieu de la table
 	gameInProgress   bool
 }
 
@@ -47,7 +46,7 @@ func (table *TableAgent) CurrentTurn() int {
 }
 
 func (table *TableAgent) Start() {
-	log.Printf("[Table] Lancement de la table %v, channel {%v}", table.id, table.c)
+	log.Printf("[Table %v] Lancement de la table %v, channel {%v}", table.id, table.id, table.c)
 	for i := range table.players {
 		table.cp[i] = make(chan agt.PlayerMessage)
 		table.players[i].SetC(table.cp[i])
@@ -70,8 +69,7 @@ func (table *TableAgent) Start() {
 			table.gameNb++
 			table.gameInProgress = true
 			deck = table.startNewPot(table.gameNb)
-			//table.doPreFlop()
-			log.Printf("\n[Table] Preflop")
+			log.Printf("\n[Table %v] Preflop", table.id)
 			table.doRoundTable(nil)
 			winner := table.checkEndOfGame()
 			if winner != -1 {
@@ -93,7 +91,7 @@ func (table *TableAgent) Start() {
 }
 
 func (table *TableAgent) doTurn(deck []agt.Card) {
-	log.Printf("\n[Table] Tour %v", table.currentTurn)
+	log.Printf("[Table %v] Tour %v", table.id, table.currentTurn)
 	if len(deck) == 0 {
 		return
 	}
@@ -133,7 +131,7 @@ func (table *TableAgent) startNewPot(roundNb int) []agt.Card {
 	smallBlind := baseBlind * (roundNb/10 + 1)
 	bigBlind := 2 * smallBlind
 
-	log.Printf("[Table] Paiement des blindes")
+	log.Printf("[Table %v] Paiement des blindes", table.id)
 	// Mises obligatoires des petites et grosses blindes
 	table.players[table.smallBlindIndex].C() <- agt.PlayerMessage{Request: agt.RequestMessage{Instruction: "mise",
 		Cards: nil, CurrentBet: smallBlind, Order: 0, NbTokens: 0}, Response: 0}
@@ -150,7 +148,7 @@ func (table *TableAgent) startNewPot(roundNb int) []agt.Card {
 	}
 
 	// Distribuer les cartes aux joueurs
-	log.Printf("[Table] Distribution des cartes")
+	log.Printf("[Table %v] Distribution des cartes", table.id)
 	for i := range table.players {
 		table.players[i].C() <- agt.PlayerMessage{Request: agt.RequestMessage{Instruction: "distrib",
 			Cards: selection[i*2 : (i+1)*2], CurrentBet: 0, Order: (i - 2) % len(table.players), NbTokens: 0}, Response: 0}
@@ -180,10 +178,8 @@ func (table *TableAgent) doRoundTable(cards []agt.Card) {
 	var i int = (table.smallBlindIndex + 2) % len(table.players) // On commence le tour juste après la grosse blinde
 	for cnt+1 < len(table.players) || table.currentTableBets[i] < table.currentBet {
 		if table.currentTableBets[i] != -1 {
-			fmt.Println("---------", table.currentTableBets, "---------")
-			fmt.Println("Bet du joueur :", table.currentBet)
+			log.Printf("[Table %v] --------- %v ---------", table.id, table.currentTableBets)
 			//bet := table.currentBet - table.currentTableBets[i]
-			//fmt.Println("Player", i, "bet :", bet)
 			table.players[i].C() <- agt.PlayerMessage{Request: agt.RequestMessage{Instruction: "joue",
 				Cards: cards, CurrentBet: table.currentBet, Order: i + 2, NbTokens: table.players[i].CurrentTokens()}, Response: 0}
 
@@ -202,7 +198,7 @@ func (table *TableAgent) doRoundTable(cards []agt.Card) {
 		i = (i + 1) % len(table.players)
 		cnt++
 	}
-	fmt.Println("---------", table.currentTableBets, "---------")
+	log.Printf("[Table %v] --------- %v ---------", table.id, table.currentTableBets)
 	for i := range table.currentTableBets {
 		if table.currentTableBets[i] != -1 {
 			table.totalPot += table.currentTableBets[i]
@@ -215,7 +211,6 @@ func (table *TableAgent) doRoundTable(cards []agt.Card) {
 func (table *TableAgent) checkEndOfGame() int {
 	stillIn := 0
 	index := -1
-	fmt.Println("-", table.currentTableBets, "-")
 	for i := range table.players {
 		if table.currentTableBets[i] != -1 {
 			index = i
@@ -223,10 +218,10 @@ func (table *TableAgent) checkEndOfGame() int {
 		}
 	}
 	if stillIn > 1 {
-		fmt.Println("Reste", stillIn, "joueurs dans la partie")
+		log.Printf("[Table %v] Reste %v joueurs dans la partie", table.id, stillIn)
 		return -1
 	} else {
-		fmt.Println("Joueur", index, "a gagné")
+		log.Printf("[Table %v] Joueur %v a gagné la partie", table.id, index)
 		return index
 	}
 }
