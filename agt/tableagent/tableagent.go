@@ -23,13 +23,13 @@ type TableAgent struct {
 	currentBet       int                       // La mise actuelle de la table
 	currentTableBets []int                     // La liste des mises actuelles de chaque joueur
 	smallBlindIndex  int                       // L'indice auquel se trouve la small blind (augmente de 1 à chaque nouvelle partie)
-	totalPot         int                       // Argent total au milieu de la table
+	auxPots          []int                     // Pots annexes
 	gameInProgress   bool
 }
 
 // ------ CONSTRUCTOR ------
 func NewTableAgent(id int, c <-chan int, wg *sync.WaitGroup, players []playeragent.PlayerAgent) *TableAgent {
-	return &TableAgent{id: id, c: c, wg: wg, players: players, currentTurn: 0, cp: make([]chan agt.PlayerMessage, len(players)), gameNb: 0, currentBet: 0, currentTableBets: make([]int, len(players)), smallBlindIndex: 0, totalPot: 0, gameInProgress: true}
+	return &TableAgent{id: id, c: c, wg: wg, players: players, currentTurn: 0, cp: make([]chan agt.PlayerMessage, len(players)), gameNb: 0, currentBet: 0, currentTableBets: make([]int, len(players)), smallBlindIndex: 0, auxPots: make([]int, len(players)), gameInProgress: true}
 }
 
 // ------ GETTER ------
@@ -74,16 +74,16 @@ func (table *TableAgent) Start() {
 			winner := table.checkEndOfGame()
 			if winner != -1 {
 				table.gameInProgress = false
-				table.players[winner].C() <- agt.PlayerMessage{Request: agt.RequestMessage{Instruction: "joue",
-					Cards: nil, CurrentBet: 0, Order: 0, NbTokens: table.totalPot + table.currentTableBets[winner]}, Response: 0}
+				table.distribEarnings(winner)
 			}
 		} else if table.gameInProgress {
 			table.doTurn(deck)
 			winner := table.checkEndOfGame()
 			if winner != -1 {
 				table.gameInProgress = false
-				table.players[winner].C() <- agt.PlayerMessage{Request: agt.RequestMessage{Instruction: "gain",
-					Cards: nil, CurrentBet: 0, Order: 0, NbTokens: table.totalPot}, Response: 0}
+				//table.players[winner].C() <- agt.PlayerMessage{Request: agt.RequestMessage{Instruction: "gain",
+				//	Cards: nil, CurrentBet: 0, Order: 0, NbTokens: table.totalPot}, Response: 0}
+				table.distribEarnings(winner)
 			}
 		}
 		table.wg.Done()
@@ -120,8 +120,9 @@ func (table *TableAgent) doTurn(deck []agt.Card) {
 func (table *TableAgent) startNewPot(roundNb int) []agt.Card {
 	deck := table.newShuffledDeck()
 
-	table.totalPot = 0
+	//table.totalPot = 0
 	for i := range table.players {
+		table.auxPots[i] = 0
 		table.currentTableBets[i] = 0
 	}
 
@@ -135,12 +136,14 @@ func (table *TableAgent) startNewPot(roundNb int) []agt.Card {
 	// Mises obligatoires des petites et grosses blindes
 	table.players[table.smallBlindIndex].C() <- agt.PlayerMessage{Request: agt.RequestMessage{Instruction: "mise",
 		Cards: nil, CurrentBet: smallBlind, Order: 0, NbTokens: 0}, Response: 0}
+	table.auxPots[table.smallBlindIndex] += smallBlind
 	resp := <-table.players[table.smallBlindIndex].C()
 	table.currentTableBets[table.smallBlindIndex] = resp.Response
 	table.currentBet = resp.Response
 
 	table.players[(table.smallBlindIndex+1)%len(table.players)].C() <- agt.PlayerMessage{Request: agt.RequestMessage{Instruction: "mise",
 		Cards: nil, CurrentBet: bigBlind, Order: 1, NbTokens: 0}, Response: 0}
+	table.auxPots[table.smallBlindIndex+1] += bigBlind
 	resp = <-table.players[(table.smallBlindIndex+1)%len(table.players)].C()
 	table.currentTableBets[(table.smallBlindIndex+1)%len(table.players)] = resp.Response
 	if resp.Response > table.currentBet {
@@ -186,7 +189,8 @@ func (table *TableAgent) doRoundTable(cards []agt.Card) {
 			resp := <-table.players[i].C()
 
 			if resp.Response == -1 {
-				table.totalPot += table.currentTableBets[i]
+				// table.totalPot += table.currentTableBets[i]
+				table.auxPots[i] += table.currentTableBets[i]
 				table.currentTableBets[i] = -1
 			} else {
 				table.currentTableBets[i] += resp.Response
@@ -201,7 +205,7 @@ func (table *TableAgent) doRoundTable(cards []agt.Card) {
 	log.Printf("[Table %v] --------- %v ---------", table.id, table.currentTableBets)
 	for i := range table.currentTableBets {
 		if table.currentTableBets[i] != -1 {
-			table.totalPot += table.currentTableBets[i]
+			table.auxPots[i] += table.currentTableBets[i]
 			table.currentTableBets[i] = 0
 		}
 	}
@@ -224,4 +228,19 @@ func (table *TableAgent) checkEndOfGame() int {
 		log.Printf("[Table %v] Joueur %v a gagné la partie", table.id, index)
 		return index
 	}
+}
+
+func (table *TableAgent) distribEarnings(winner int) {
+	var winnerEarnings int
+	for i := 0; i < len(table.players); i++ {
+		if table.auxPots[i] > table.auxPots[winner] {
+			winnerEarnings += table.auxPots[winner]
+			table.players[i].C() <- agt.PlayerMessage{Request: agt.RequestMessage{Instruction: "gain",
+				Cards: nil, CurrentBet: 0, Order: 0, NbTokens: table.auxPots[i] - table.auxPots[winner]}, Response: 0}
+		} else {
+			winnerEarnings += table.auxPots[i]
+		}
+	}
+	table.players[winner].C() <- agt.PlayerMessage{Request: agt.RequestMessage{Instruction: "gain",
+		Cards: nil, CurrentBet: 0, Order: 0, NbTokens: winnerEarnings}, Response: 0}
 }
