@@ -7,6 +7,7 @@ import (
 
 	"gitlab.utc.fr/nivoixpa/ia04-poker/agt"
 	"gitlab.utc.fr/nivoixpa/ia04-poker/agt/playeragent"
+	"gitlab.utc.fr/nivoixpa/ia04-poker/rules"
 )
 
 var baseBlind = 5
@@ -65,25 +66,29 @@ func (table *TableAgent) Start() {
 
 		// On met à jour le tour actuel récupéré à travers le channel
 		table.currentTurn = turnNb
+		winners := make([]int, 0)
 		if turnNb == 0 {
 			table.gameNb++
 			table.gameInProgress = true
 			deck = table.startNewPot(table.gameNb)
 			log.Printf("\n[Table %v] Preflop", table.id)
 			table.doRoundTable(nil)
-			winner := table.checkEndOfGame()
+			winner := table.checkDefaultWinner()
 			if winner != -1 {
+				winners = append(winners, winner)
 				table.gameInProgress = false
-				table.distribEarnings(winner)
+				table.distribEarnings(winners)
 			}
 		} else if table.gameInProgress {
 			table.doTurn(deck)
-			winner := table.checkEndOfGame()
+			winner := table.checkDefaultWinner()
 			if winner != -1 {
+				winners = append(winners, winner)
 				table.gameInProgress = false
-				//table.players[winner].C() <- agt.PlayerMessage{Request: agt.RequestMessage{Instruction: "gain",
-				//	Cards: nil, CurrentBet: 0, Order: 0, NbTokens: table.totalPot}, Response: 0}
-				table.distribEarnings(winner)
+				table.distribEarnings(winners)
+			} else if turnNb == 3 {
+				winners = table.checkWinnersByScore(deck)
+				table.distribEarnings(winners)
 			}
 		}
 		table.wg.Done()
@@ -106,12 +111,6 @@ func (table *TableAgent) doTurn(deck []agt.Card) {
 		cards = deck[:5]
 	}
 
-	// Code non fini, le code actuel s'arrête après un tour
-	// Mais tant que tout le monde n'a pas misé ou s'est couché, le tour ne doit pas se finir
-	// for i, p := range table.players {
-	// 	p.C() <- agt.PlayerMessage{Request: agt.RequestMessage{Instruction: "joue",
-	// 		Cards: cards, CurrentBet: 0, Order: (i - 2) % len(table.players), NbTokens: p.CurrentTokens()}, Response: 0}
-	// }
 	table.doRoundTable(cards)
 
 	table.currentTurn++
@@ -184,7 +183,7 @@ func (table *TableAgent) doRoundTable(cards []agt.Card) {
 			log.Printf("[Table %v] --------- %v ---------", table.id, table.currentTableBets)
 			//bet := table.currentBet - table.currentTableBets[i]
 			table.players[i].C() <- agt.PlayerMessage{Request: agt.RequestMessage{Instruction: "joue",
-				Cards: cards, CurrentBet: table.currentBet, Order: i + 2, NbTokens: table.players[i].CurrentTokens()}, Response: 0}
+				Cards: cards, CurrentBet: table.currentBet, Order: i, NbTokens: table.players[i].CurrentTokens()}, Response: 0}
 
 			resp := <-table.players[i].C()
 
@@ -212,7 +211,7 @@ func (table *TableAgent) doRoundTable(cards []agt.Card) {
 	table.currentBet = 0
 }
 
-func (table *TableAgent) checkEndOfGame() int {
+func (table *TableAgent) checkDefaultWinner() int {
 	stillIn := 0
 	index := -1
 	for i := range table.players {
@@ -230,17 +229,41 @@ func (table *TableAgent) checkEndOfGame() int {
 	}
 }
 
-func (table *TableAgent) distribEarnings(winner int) {
-	var winnerEarnings int
-	for i := 0; i < len(table.players); i++ {
-		if table.auxPots[i] > table.auxPots[winner] {
-			winnerEarnings += table.auxPots[winner]
-			table.players[i].C() <- agt.PlayerMessage{Request: agt.RequestMessage{Instruction: "gain",
-				Cards: nil, CurrentBet: 0, Order: 0, NbTokens: table.auxPots[i] - table.auxPots[winner]}, Response: 0}
-		} else {
-			winnerEarnings += table.auxPots[i]
+func (table *TableAgent) checkWinnersByScore(deck []agt.Card) (winners []int) {
+	var maxScore int = -1
+	// Should only be executed at the end of the very last turn
+	for i := range table.players {
+		if table.currentTableBets[i] > -1 {
+			score := rules.CheckCombinations(table.players[i].Card(), deck)
+			if score > maxScore {
+				maxScore = score
+				winners = make([]int, 1, len(table.players))
+				winners[0] = i
+
+			} else if score == maxScore {
+				winners = append(winners, i)
+			}
 		}
 	}
-	table.players[winner].C() <- agt.PlayerMessage{Request: agt.RequestMessage{Instruction: "gain",
-		Cards: nil, CurrentBet: 0, Order: 0, NbTokens: winnerEarnings}, Response: 0}
+	return winners
+}
+
+func (table *TableAgent) distribEarnings(winners []int) {
+	reste := make([]int, len(table.players))
+	gain := make([]int, len(table.players))
+	for player := range table.players {
+		reste[player] = table.auxPots[player]
+		for winner := range winners {
+			gain[winner] += rules.Min(table.auxPots[winner], table.auxPots[player]/len(winners))
+			reste[player] -= gain[winner]
+		}
+		gain[player] += reste[player]
+	}
+	for player := range table.players {
+		if gain[player] > 0 {
+			table.players[player].C() <- agt.PlayerMessage{Request: agt.RequestMessage{Instruction: "gain",
+				Cards: nil, CurrentBet: 0, Order: 0, NbTokens: gain[player]}, Response: 0}
+		}
+	}
+	table.wg.Done()
 }
