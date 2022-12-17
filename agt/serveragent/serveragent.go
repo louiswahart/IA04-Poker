@@ -1,6 +1,7 @@
 package serveragent
 
 import (
+	"log"
 	"math/rand"
 	"sync"
 
@@ -45,25 +46,30 @@ func (server *ServerAgent) Wg() *sync.WaitGroup {
 
 func (server *ServerAgent) Start() {
 	// Créer les PlayerAgents
+	log.Printf("[Serveur] Création des joueurs")
 	for i := 0; i < server.nbTables*PlayersPerTable; i++ {
 		server.players[i] = *RandomPlayerAgent(i)
 	}
 
 	// Créer les TableAgents et y assigner les PlayerAgents
+	log.Printf("[Serveur] Création des tables")
 	for i := 0; i < server.nbTables; i++ {
 		// Génération des joueurs de chaque table
 		players := server.players[i*PlayersPerTable : (i+1)*PlayersPerTable]
+		server.c[i] = make(chan int)
 		server.tables[i] = *tableagent.NewTableAgent(i, server.c[i], server.wg, players)
 	}
 
 	// Démarrer serveur http (pour l'affichage web)
 	// Lancer les TableAgents
-	for _, table := range server.tables {
+	log.Printf("[Serveur] Lancement des tables")
+	for i := range server.tables {
 		server.wg.Add(1)
-		table.Start()
+		go server.tables[i].Start()
 	}
 	server.wg.Wait()
 
+	log.Printf("[Serveur] Lancement des parties")
 	for i := 0; i < server.nbGames; i++ {
 		// Synchroniser les TableAgents tour après tour + envoyer requêtes web pour affichage
 		for turn := 0; turn < 4; turn++ {
@@ -72,11 +78,13 @@ func (server *ServerAgent) Start() {
 				server.c[j] <- turn
 				server.wg.Add(1)
 			}
+			server.wg.Wait()
 		}
 		// On attend que toutes les tables ait fini leur tour
 		server.wg.Wait()
 	}
 
+	log.Printf("[Serveur] Parties terminées, fermeture des tables")
 	// On ferme toutes les tables
 	for i := 0; i < server.nbTables; i++ {
 		server.c[i] <- -1
