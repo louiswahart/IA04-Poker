@@ -29,3 +29,24 @@ type PlayerMessage struct {
 	Request  RequestMessage
 	Response int
 }
+
+// demande si ça joue
+type Request struct {
+	Info string `json:"Info"`
+}
+
+// incrémente un token
+type Response struct {
+	Token int `json:"Token"`
+}
+
+type RequestUpdate struct {
+	Update string `json:"Update"`
+}
+
+type ResponseUpdate struct {
+	NbTables int `json:"NbTables"`
+	NbGames  int `json:"NbGames"`
+	//Players  []playeragent.PlayerAgent `json:"Players"`
+	//Tables   []tableagent.TableAgent   `json:"Tables"`
+}

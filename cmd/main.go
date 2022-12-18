@@ -8,8 +8,9 @@ import (
 )
 
 func main() {
+	const urlserv = ":8080"
 	var wg sync.WaitGroup
-	serv := serveragent.NewServerAgent(1, 1, 2, &wg)
+	serv := serveragent.NewServerAgent(urlserv, 1, 1, 2, &wg)
 	go serv.Start()
 	fmt.Scanln()
 }
