@@ -1,0 +1,59 @@
+.container{
+  width: 100%;
+  height: 100%;
+  position: absolute;
+  display: flex;
+  align-items: center;
+}
+.all{
+  width: 100%;
+  height: 100%;
+}
+
+.jeu {
+  width: 80%;
+  height: 100%;
+}
+
+.plateau {
+  width: 100%;
+  height: 80%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.interactions{
+  width: 100%;
+  height: 20%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.infos{
+  width: 20%;
+  height: 100%;
+}
+
+.rectangle {
+  margin: auto;
+  width:  600px;
+  height: 600px;
+  background: green;
+}
+
+.joueur1 {
+  width: 5%;
+  height: 5%;
+}
+
+
+
+.card{
+  margin: auto;
+  width: 100px;
+  height: 10px;
+  background: white;
+}
+
