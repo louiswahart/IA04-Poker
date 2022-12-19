@@ -72,6 +72,13 @@ func (*ServerAgent) decodeRequestUpdate(r *http.Request) (req agt.RequestUpdate,
 	return
 }
 
+func (*ServerAgent) decodeRequestgetTable(r *http.Request) (req agt.RequestgetTable, err error) {
+	buf := new(bytes.Buffer)
+	buf.ReadFrom(r.Body)
+	err = json.Unmarshal(buf.Bytes(), &req)
+	return
+}
+
 func (server *ServerAgent) play(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Access-Control-Allow-Origin", "http://localhost:3000")
 	w.Header().Set("Access-Control-Allow-Headers", "Content-Type")
@@ -166,6 +173,57 @@ func RandomPlayerAgent(id int) *playeragent.PlayerAgent {
 	return playeragent.NewPlayerAgent(id, nil, rand.Intn(100), rand.Intn(100), rand.Intn(100), rand.Intn(100))
 }
 
+// Fonction de mise à jour lors d'un changement de table
+func (server *ServerAgent) getTable(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Access-Control-Allow-Origin", "http://localhost:3000")
+	w.Header().Set("Access-Control-Allow-Headers", "Content-Type")
+	// Détecter le type de requête
+	// Si OPTION
+	if server.checkMethod("OPTIONS", r) {
+		log.Println("[Serveur] Requête de connexion")
+		w.WriteHeader(http.StatusOK)
+		fmt.Fprintf(w, "OK")
+		return
+	} else if server.checkMethod("POST", r) {
+		// Décode de la requête pour vérifier que correspond à la bonne action
+		req, err := server.decodeRequestgetTable(r)
+		if err != nil {
+			log.Printf("[Serveur] Err %v\n", err)
+			w.WriteHeader(http.StatusInternalServerError)
+			fmt.Fprintf(w, "erreur %v", err)
+			return
+		}
+		if req.Req != "getTable" {
+			return
+		}
+		if req.Table < 0 && req.Table >= server.nbTables {
+			return
+		}
+
+		// Récupération des informations a envoyer
+		ids := make([]int, 5)
+		tokens := make([]int, 5)
+		bets := make([]int, 5)
+		for i, p := range server.tables[req.Table].Players() {
+			ids[i] = p.Id()
+			tokens[i] = p.CurrentTokens()
+			bets[i] = p.CurrentBet()
+		}
+
+		log.Printf("[Serveur] Envoie des informations demandées\nIds : %v\nTokens : %v\nBets : %v\n", ids, tokens, bets)
+		// Fournir l'état du tour actuel
+		send := agt.ResponsegetTable{
+			PlayersID:    ids,
+			PlayersToken: tokens,
+			PlayersBet:   bets,
+		}
+		data, _ := json.Marshal(send)
+		w.WriteHeader(http.StatusOK)
+		w.Write(data)
+		log.Printf("[Serveur] Informations de changement de table bien envoyées\n")
+	}
+}
+
 // Fonction de mise à jour des informations des tables et joueurs
 func (server *ServerAgent) update(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Access-Control-Allow-Origin", "http://localhost:3000")
@@ -249,7 +307,7 @@ func (serv *ServerAgent) Start() {
 	mux := http.NewServeMux()
 	mux.HandleFunc("/play", serv.play)
 	mux.HandleFunc("/update", serv.update)
-
+	mux.HandleFunc("/getTable", serv.getTable)
 	// Création du serveur
 	s := &http.Server{
 		Addr:           serv.addr,

@@ -4,8 +4,6 @@ export default class Info extends React.Component {
     constructor(props) {
       super(props);
       this.state = {
-          nbTables: 0,
-          nbGames: 0,
           displayTables: false
       };
     }
@@ -21,7 +19,7 @@ export default class Info extends React.Component {
     render() {
         let listButton = []
 
-        for (let i=0;i<=5;i++) {
+        for (let i=0;i<this.props.nbTable;i++) {
             listButton.push(
               <div>
                 <button onClick={() => this.props.onTableChanged(i)}>
@@ -35,7 +33,6 @@ export default class Info extends React.Component {
         return (
         <div>
             <button onClick={this.openTables.bind(this)}>Tables</button>
-
             {
               this.state.displayTables ? (
             <div className='Tables'>

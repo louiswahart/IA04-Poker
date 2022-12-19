@@ -1,20 +1,7 @@
 import React from 'react';
 import Player from './Player'
 import Info from './Info'
-
-class Interactions extends React.Component {
-    render() {
-        return (
-        <div>
-            <div className='boutons'>
-                <button onClick={this.props.onPlay}>Jouer</button>
-                <button onClick={this.props.onPause}>Pause</button>
-                <button onClick={this.props.onReset}>Reset</button>
-            </div>
-        </div>
-        );
-    }
-}
+import Interactions from './Interactions'
 
 export default class Game extends React.Component {
     constructor(props) {
@@ -27,6 +14,7 @@ export default class Game extends React.Component {
             currentGame: 0,
             token: 0,
             idTable: 0,
+            menu: true,
             play: false,
             playersId : [],
             playersToken: [],
@@ -70,19 +58,19 @@ export default class Game extends React.Component {
 
     changedTable(i){
         console.log("Table : " + i);
-        /*const options = {
+        const options = {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ Update: 'update', nbTable : i })
+            body: JSON.stringify({ Req: 'getTable', Table: Number(i)})
         };
         fetch('http://localhost:8080/getTable', options)
             .then(resp => resp.json())
-            .then(data => this.setState({ nbTables: data.NbTables,nbGames: data.NbGames }));*/
+            .then(data => this.setState({ playersId: data.PlayersID,  playersToken: data.PlayersToken, playersBet: data.PlayersBet}));
+        this.setState({idTable : i})
     }
 
     Play() {
-        this.setState({playersId : [4,8,7,0,2]})
-        //this.setState({play : true});
+        this.setState({play : true});
     }
 
     Pause(){
@@ -113,6 +101,7 @@ export default class Game extends React.Component {
         fetch('http://localhost:8080/play', options)
             .then(resp => console.log(resp.statusText));
 
+        this.setState({menu : false})
         this.setState({play : true})
     }
 
@@ -120,7 +109,7 @@ export default class Game extends React.Component {
         return (
         <div className='all'>
             {/* Affichage du menu */}
-            {!this.state.play ?
+            {this.state.menu ?
                 <div>
                     <form onSubmit={this.handleSubmit}>        
                         <label>
@@ -139,7 +128,7 @@ export default class Game extends React.Component {
 
 
             {/* Affichage du jeu */}
-            {this.state.play ?
+            {!this.state.menu ?
                 <div>
                     <div className="jeu">
                         <div className="plateau">
@@ -175,6 +164,13 @@ export default class Game extends React.Component {
                                     listeCards={20}
                                 />
                             </div>
+                        </div>
+                        <div className="interactions">
+                            <Interactions 
+                                onPlay={() => this.Play()}
+                                onPause={() => this.Pause()}
+                                onReset={() => this.Reset()}
+                            />
                         </div>
                     </div>  
                     <div className="infos">

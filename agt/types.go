@@ -36,6 +36,17 @@ type RequestPlay struct {
 	NbGames  int    `json:"NbGames"`
 }
 
+type RequestgetTable struct {
+	Req   string `json:"Req"`
+	Table int    `json:"Table"`
+}
+
+type ResponsegetTable struct {
+	PlayersID    []int `json:"PlayersID"`
+	PlayersToken []int `json:"PlayersToken"`
+	PlayersBet   []int `json:"PlayersBet"`
+}
+
 type RequestUpdate struct {
 	Req   string `json:"Req"`
 	Table int    `json:"Table"`
