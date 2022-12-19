@@ -27,11 +27,13 @@ type ServerAgent struct {
 	wg       *sync.WaitGroup
 	players  []playeragent.PlayerAgent
 	tables   []tableagent.TableAgent
+	turn     int
+	games    int
 }
 
 // ------ CONSTRUCTOR ------
-func NewServerAgent(addr string, id int, nbTables int, nbGames int, wg *sync.WaitGroup) *ServerAgent {
-	return &ServerAgent{addr: addr, id: id, nbTables: nbTables, nbGames: nbGames, c: make([]chan int, nbTables), wg: wg, players: make([]playeragent.PlayerAgent, nbTables*PlayersPerTable), tables: make([]tableagent.TableAgent, nbTables)}
+func NewServerAgent(addr string, id int) *ServerAgent {
+	return &ServerAgent{addr: addr, id: id, nbTables: 50, nbGames: 50, turn: -1, games: 0}
 }
 
 // ------ GETTER ------
@@ -51,62 +53,14 @@ func (server *ServerAgent) Wg() *sync.WaitGroup {
 	return server.wg
 }
 
-func (server *ServerAgent) Start() {
-	// Créer les PlayerAgents
-	log.Printf("[Serveur] Création des joueurs")
-	for i := 0; i < server.nbTables*PlayersPerTable; i++ {
-		server.players[i] = *RandomPlayerAgent(i)
-	}
-
-	// Créer les TableAgents et y assigner les PlayerAgents
-	log.Printf("[Serveur] Création des tables")
-	for i := 0; i < server.nbTables; i++ {
-		// Génération des joueurs de chaque table
-		players := server.players[i*PlayersPerTable : (i+1)*PlayersPerTable]
-		server.c[i] = make(chan int)
-		server.tables[i] = *tableagent.NewTableAgent(i, server.c[i], server.wg, players)
-	}
-
-	// Démarrer serveur http (pour l'affichage web)
-	// Lancer les TableAgents
-	log.Printf("[Serveur] Lancement des tables")
-	for i := range server.tables {
-		server.wg.Add(1)
-		go server.tables[i].Start()
-	}
-	server.wg.Wait()
-
-	log.Printf("[Serveur] Lancement des parties")
-	for i := 0; i < server.nbGames; i++ {
-		// Synchroniser les TableAgents tour après tour + envoyer requêtes web pour affichage
-		for turn := 0; turn < 4; turn++ {
-			// On envoie le signal du tour aux tables à travers le channel associé
-			for j := 0; j < server.nbTables; j++ {
-				server.c[j] <- turn
-				server.wg.Add(1)
-			}
-			server.wg.Wait()
-		}
-		// On attend que toutes les tables ait fini leur tour
-		server.wg.Wait()
-	}
-
-	log.Printf("[Serveur] Parties terminées, fermeture des tables")
-	// On ferme toutes les tables
-	for i := 0; i < server.nbTables; i++ {
-		server.c[i] <- -1
-	}
-	return
+func (*ServerAgent) checkMethod(method string, r *http.Request) bool {
+	return r.Method == method
 }
 
-func RandomPlayerAgent(id int) *playeragent.PlayerAgent {
-	return playeragent.NewPlayerAgent(id, nil, rand.Intn(100), rand.Intn(100), rand.Intn(100), rand.Intn(100))
-}
-
-// partie web
-func (*ServerAgent) decodeRequest(r *http.Request) (req agt.Request, err error) {
+func (*ServerAgent) decodeRequestPlay(r *http.Request) (req agt.RequestPlay, err error) {
 	buf := new(bytes.Buffer)
 	buf.ReadFrom(r.Body)
+	log.Printf("[Serveur] JSON %v\n", buf.String())
 	err = json.Unmarshal(buf.Bytes(), &req)
 	return
 }
@@ -118,65 +72,179 @@ func (*ServerAgent) decodeRequestUpdate(r *http.Request) (req agt.RequestUpdate,
 	return
 }
 
-// Play  = envoyer un nombre
-func (serv *ServerAgent) play(w http.ResponseWriter, r *http.Request) {
+func (server *ServerAgent) play(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Access-Control-Allow-Origin", "http://localhost:3000")
 	w.Header().Set("Access-Control-Allow-Headers", "Content-Type")
-	log.Println("PLAY")
-
-	// Décode de la requête pour vérifier que correspond à la bonne action
-	req, err := serv.decodeRequest(r)
-	if err != nil {
+	// Détecter le type de requête
+	// Si OPTION
+	if server.checkMethod("OPTIONS", r) {
+		log.Println("[Serveur] Requête de connexion")
+		w.WriteHeader(http.StatusOK)
+		fmt.Fprintf(w, "OK")
 		return
-	}
-	if req.Info != "play" {
-		return
-	}
+	} else if server.checkMethod("POST", r) {
+		// Si POST
+		log.Println("[Serveur] Requête en play")
 
-	// Envoyer le nombre de table
-	send := agt.Response{
-		Token: serv.nbTables,
+		// Mise à jour du seed
+		rand.Seed(time.Now().UnixNano())
+
+		// Décode de la requête pour vérifier que correspond à la bonne action
+		req, err := server.decodeRequestPlay(r)
+		if err != nil {
+			log.Printf("[Serveur] Err %v\n", err)
+			w.WriteHeader(http.StatusInternalServerError)
+			fmt.Fprintf(w, "erreur %v", err)
+			return
+		}
+		if req.Req != "play" {
+			return
+		}
+
+		// Récupération des informations : nbTable et nbGame
+		if req.NbGames <= 0 {
+			log.Println("[Serveur] Test")
+			return
+		}
+		if req.NbTables <= 0 {
+			log.Println("[Serveur] Test")
+			return
+		}
+
+		server.nbGames = req.NbGames
+		server.nbTables = req.NbTables
+
+		log.Printf("[Serveur] Nombre de tables reçues : %v | Nombre de games reçues : %v\n", server.nbTables, server.nbGames)
+
+		// Création des channels
+		server.c = make([]chan int, server.nbTables)
+
+		log.Printf("[Serveur] Channels créés\n")
+
+		// Création du waitgroup
+		var wg sync.WaitGroup
+		server.wg = &wg
+
+		log.Printf("[Serveur] WaitGroup créé\n")
+
+		// Création du tableau qui contiendra les joueurs
+		server.players = make([]playeragent.PlayerAgent, server.nbTables*PlayersPerTable)
+
+		// Création du tableau qui contiendra les tables
+		server.tables = make([]tableagent.TableAgent, server.nbTables)
+
+		// Créer les PlayerAgents
+		log.Printf("[Serveur] Création des joueurs")
+		for i := 0; i < server.nbTables*PlayersPerTable; i++ {
+			server.players[i] = *RandomPlayerAgent(i)
+		}
+
+		// Créer les TableAgents et y assigner les PlayerAgents
+		log.Printf("[Serveur] Création des tables")
+		for i := 0; i < server.nbTables; i++ {
+			// Génération des joueurs de chaque table
+			players := server.players[i*PlayersPerTable : (i+1)*PlayersPerTable]
+			server.c[i] = make(chan int)
+			server.tables[i] = *tableagent.NewTableAgent(i, server.c[i], server.wg, players)
+		}
+
+		// Lancer les TableAgents
+		log.Printf("[Serveur] Lancement des tables")
+		for i := range server.tables {
+			server.wg.Add(1)
+			go server.tables[i].Start()
+		}
+		server.wg.Wait()
+
+		// Envoyer que tout est bon
+		w.WriteHeader(http.StatusOK)
+		fmt.Fprintf(w, "Création des joueurs et des tables effectuée !")
 	}
-	data, _ := json.Marshal(send)
-	w.WriteHeader(http.StatusOK)
-	w.Write(data)
+}
+
+func RandomPlayerAgent(id int) *playeragent.PlayerAgent {
+	return playeragent.NewPlayerAgent(id, nil, rand.Intn(100), rand.Intn(100), rand.Intn(100), rand.Intn(100))
 }
 
 // Fonction de mise à jour des informations des tables et joueurs
-func (serv *ServerAgent) update(w http.ResponseWriter, r *http.Request) {
+func (server *ServerAgent) update(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Access-Control-Allow-Origin", "http://localhost:3000")
 	w.Header().Set("Access-Control-Allow-Headers", "Content-Type")
-	log.Println("UPDATE")
-
-	// Décode de la requête pour vérifier que correspond à la bonne action
-	req, err := serv.decodeRequestUpdate(r)
-	if err != nil {
+	// Détecter le type de requête
+	// Si OPTION
+	if server.checkMethod("OPTIONS", r) {
+		log.Println("[Serveur] Requête de connexion")
+		w.WriteHeader(http.StatusOK)
+		fmt.Fprintf(w, "OK")
 		return
-	}
-	if req.Update != "update" {
-		return
-	}
+	} else if server.checkMethod("POST", r) {
 
-	fmt.Printf(req.Update)
+		// Décode de la requête pour vérifier que correspond à la bonne action
+		req, err := server.decodeRequestUpdate(r)
+		if err != nil {
+			log.Printf("[Serveur] Err %v\n", err)
+			w.WriteHeader(http.StatusInternalServerError)
+			fmt.Fprintf(w, "erreur %v", err)
+			return
+		}
+		if req.Req != "update" {
+			return
+		}
+		if req.Table < 0 && req.Table >= server.nbTables {
+			return
+		}
 
-	// Fournir l'état actuel du serveur casino
-	send := agt.ResponseUpdate{
-		NbTables: serv.nbTables,
-		NbGames:  serv.nbGames,
-		//Players:  serv.players,
-		//Tables:   serv.tables,
+		log.Println("[Serveur] Demande d'update")
+		server.turn++
+
+		if server.turn >= 4 {
+			server.games++
+			if server.games >= server.nbGames {
+				log.Printf("[Serveur] Parties terminées, fermeture des tables\n")
+				// On ferme toutes les tables
+				for i := 0; i < server.nbTables; i++ {
+					server.c[i] <- -1
+				}
+				// INDIQUER LA FIN AU FRONT
+				return
+			} else {
+				server.turn = 0
+			}
+		}
+
+		log.Printf("[Serveur] Lancement du tour : %v\n", server.turn)
+		// On envoie le signal du tour aux tables à travers le channel associé
+		for j := 0; j < server.nbTables; j++ {
+			server.c[j] <- server.turn
+			server.wg.Add(1)
+		}
+		server.wg.Wait()
+
+		// Récupération des informations a envoyer
+		ids := make([]int, 5)
+		tokens := make([]int, 5)
+		bets := make([]int, 5)
+		for i, p := range server.tables[req.Table].Players() {
+			ids[i] = p.Id()
+			tokens[i] = p.CurrentTokens()
+			bets[i] = p.CurrentBet()
+		}
+
+		log.Printf("[Serveur] Envoie des informations demandées\nIds : %v\nTokens : %v\nBets : %v\n", ids, tokens, bets)
+		// Fournir l'état du tour actuel
+		send := agt.ResponseUpdate{
+			PlayersID:    ids,
+			PlayersToken: tokens,
+			PlayersBet:   bets,
+		}
+		data, _ := json.Marshal(send)
+		w.WriteHeader(http.StatusOK)
+		w.Write(data)
+		log.Printf("[Serveur] Informations bien envoyées\n")
 	}
-	log.Println(serv.nbTables)
-	data, _ := json.Marshal(send)
-	w.WriteHeader(http.StatusOK)
-	w.Write(data)
 }
 
-func (serv *ServerAgent) Sleeping() {
-	time.Sleep(5 * time.Minute)
-}
-
-func (serv *ServerAgent) StartServer() {
+func (serv *ServerAgent) Start() {
 	// Création du multiplexer
 	mux := http.NewServeMux()
 	mux.HandleFunc("/play", serv.play)
@@ -191,6 +259,6 @@ func (serv *ServerAgent) StartServer() {
 		MaxHeaderBytes: 1 << 20}
 
 	// Lancement du serveur
-	log.Println("Listening on", serv.addr)
+	log.Println("[Serveur] Listening on", serv.addr)
 	go log.Fatal(s.ListenAndServe())
 }

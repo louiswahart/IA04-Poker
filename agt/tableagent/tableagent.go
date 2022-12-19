@@ -253,9 +253,9 @@ func (table *TableAgent) distribEarnings(winners []int) {
 	gain := make([]int, len(table.players))
 	for player := range table.players {
 		reste[player] = table.auxPots[player]
-		for winner := range winners {
+		for _, winner := range winners {
 			gain[winner] += rules.Min(table.auxPots[winner], table.auxPots[player]/len(winners))
-			reste[player] -= gain[winner]
+			reste[player] -= rules.Min(table.auxPots[winner], table.auxPots[player]/len(winners))
 		}
 		gain[player] += reste[player]
 	}
@@ -265,5 +265,4 @@ func (table *TableAgent) distribEarnings(winners []int) {
 				Cards: nil, CurrentBet: 0, Order: 0, NbTokens: gain[player]}, Response: 0}
 		}
 	}
-	table.wg.Done()
 }

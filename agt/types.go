@@ -30,23 +30,19 @@ type PlayerMessage struct {
 	Response int
 }
 
-// demande si ça joue
-type Request struct {
-	Info string `json:"Info"`
-}
-
-// incrémente un token
-type Response struct {
-	Token int `json:"Token"`
+type RequestPlay struct {
+	Req      string `json:"Req"`
+	NbTables int    `json:"NbTables"`
+	NbGames  int    `json:"NbGames"`
 }
 
 type RequestUpdate struct {
-	Update string `json:"Update"`
+	Req   string `json:"Req"`
+	Table int    `json:"Table"`
 }
 
 type ResponseUpdate struct {
-	NbTables int `json:"NbTables"`
-	NbGames  int `json:"NbGames"`
-	//Players  []playeragent.PlayerAgent `json:"Players"`
-	//Tables   []tableagent.TableAgent   `json:"Tables"`
+	PlayersID    []int `json:"PlayersID"`
+	PlayersToken []int `json:"PlayersToken"`
+	PlayersBet   []int `json:"PlayersBet"`
 }
