@@ -1,46 +1,45 @@
 import React from 'react';
+import Select from 'react-select';
 
 export default class Info extends React.Component {
     constructor(props) {
       super(props);
-      this.state = {
-          displayTables: false
-      };
     }
 
-    openTables () {
-      this.setState((state,props) => ({displayTables: true}));
-    }
-  
-    closeTables () {
-      this.setState((state,props) => ({displayTables: false}));
-    }
+    handleChange = (e) => {
+      this.props.onTableChanged(e.value);
+    };
     
     render() {
-        let listButton = []
+        let listTables = []
 
         for (let i=0;i<this.props.nbTable;i++) {
-            listButton.push(
-              <div>
-                <button onClick={() => this.props.onTableChanged(i)}>
-                    Table {i}
-                </button>
-                <br/>
-            </div>
+            listTables.push(
+              {value : i,label:'Table ' + i}
+            )    
+        }
+
+        let listPlayers = []
+
+        for (let i=0;i<this.props.nbPlayers;i++) {
+            listPlayers.push(
+              {value : i,label:'Joueur ' + i}
             )    
         }
 
         return (
         <div>
-            <button onClick={this.openTables.bind(this)}>Tables</button>
-            {
-              this.state.displayTables ? (
-            <div className='Tables'>
-                {listButton}
-            </div>
-              ) : (null)
-            }
-            <button>Statistiques</button>
+            <Select onChange={this.handleChange}
+              name="Choix des tables"
+              defaultValue={listTables[0]}
+              maxMenuHeight={200}
+              options = {listTables}
+            />
+            <Select 
+              placeholder="Choix des joueurs"
+              options = {listPlayers} 
+              maxMenuHeight={200}
+            />
         </div>
         );
     }

@@ -43,17 +43,13 @@
   background: green;
 }
 
-.joueur1 {
-  width: 5%;
-  height: 5%;
-}
-
-
-
 .card{
   margin: auto;
   width: 100px;
   height: 10px;
   background: white;
 }
+
+
+
 

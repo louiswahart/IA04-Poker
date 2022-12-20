@@ -133,44 +133,44 @@ export default class Game extends React.Component {
                 <div>
                     <div className="jeu">
                         <div className="plateau">
+                            <Player 
+                                ID={this.state.playersId[0]} 
+                                nbToken={this.state.playersToken[0]} 
+                                bet={this.state.playersBet[0]}
+                                action={this.state.playersActions[0]} 
+                                listeCards={20}
+                            />
+                            <Player 
+                                ID={this.state.playersId[1]} 
+                                nbToken={this.state.playersToken[1]} 
+                                bet={this.state.playersBet[1]} 
+                                action={this.state.playersActions[1]} 
+                                listeCards={20}
+                            />
+                            <Player 
+                                ID={this.state.playersId[2]} 
+                                nbToken={this.state.playersToken[2]} 
+                                bet={this.state.playersBet[2]} 
+                                action={this.state.playersActions[2]} 
+                                listeCards={20}
+                            />
+                            <Player 
+                                ID={this.state.playersId[3]} 
+                                nbToken={this.state.playersToken[3]} 
+                                bet={this.state.playersBet[3]} 
+                                action={this.state.playersActions[3]} 
+                                listeCards={20}
+                            />
+                            <Player 
+                                ID={this.state.playersId[4]} 
+                                nbToken={this.state.playersToken[4]} 
+                                bet={this.state.playersBet[4]}  
+                                action={this.state.playersActions[4]} 
+                                listeCards={20}
+                            />
+                            </div>    
                             <div className='rectangle'>
-                                <Player 
-                                    ID={this.state.playersId[0]} 
-                                    nbToken={this.state.playersToken[0]} 
-                                    bet={this.state.playersBet[0]}
-                                    action={this.state.playersActions[0]} 
-                                    listeCards={20}
-                                />
-                                <Player 
-                                    ID={this.state.playersId[1]} 
-                                    nbToken={this.state.playersToken[1]} 
-                                    bet={this.state.playersBet[1]} 
-                                    action={this.state.playersActions[1]} 
-                                    listeCards={20}
-                                />
-                                <Player 
-                                    ID={this.state.playersId[2]} 
-                                    nbToken={this.state.playersToken[2]} 
-                                    bet={this.state.playersBet[2]} 
-                                    action={this.state.playersActions[2]} 
-                                    listeCards={20}
-                                />
-                                <Player 
-                                    ID={this.state.playersId[3]} 
-                                    nbToken={this.state.playersToken[3]} 
-                                    bet={this.state.playersBet[3]} 
-                                    action={this.state.playersActions[3]} 
-                                    listeCards={20}
-                                />
-                                <Player 
-                                    ID={this.state.playersId[4]} 
-                                    nbToken={this.state.playersToken[4]} 
-                                    bet={this.state.playersBet[4]}  
-                                    action={this.state.playersActions[4]} 
-                                    listeCards={20}
-                                />
                             </div>
-                        </div>
                         <div className="interactions">
                             <Interactions 
                                 onPlay={() => this.Play()}
@@ -182,6 +182,7 @@ export default class Game extends React.Component {
                     <div className="infos">
                         <Info
                             nbTable= {this.state.nbTable} 
+                            nbPlayers= {5*this.state.nbTable}
                             onTableChanged={i => this.changedTable(i)}
                         />
                     </div>
