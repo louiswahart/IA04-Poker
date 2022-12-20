@@ -30,7 +30,7 @@ type TableAgent struct {
 
 // ------ CONSTRUCTOR ------
 func NewTableAgent(id int, c <-chan int, wg *sync.WaitGroup, players []playeragent.PlayerAgent) *TableAgent {
-	return &TableAgent{id: id, c: c, wg: wg, players: players, currentTurn: 0, cp: make([]chan agt.PlayerMessage, len(players)), gameNb: 0, currentBet: 0, currentTableBets: make([]int, len(players)), smallBlindIndex: 0, auxPots: make([]int, len(players)), gameInProgress: true}
+	return &TableAgent{id: id, c: c, wg: wg, players: players, currentTurn: 0, cp: make([]chan agt.PlayerMessage, len(players)), gameNb: 0, currentBet: 0, currentTableBets: make([]int, len(players)), smallBlindIndex: -1, auxPots: make([]int, len(players)), gameInProgress: true}
 }
 
 // ------ GETTER ------
@@ -70,6 +70,19 @@ func (table *TableAgent) Start() {
 		if turnNb == 0 {
 			table.gameNb++
 			table.gameInProgress = true
+			table.smallBlindIndex = (table.smallBlindIndex + 1) % len(table.players)
+			cntPlaying := len(table.players)
+			for i := range table.players {
+				if !(table.players[i].CurrentTokens() > 0) {
+					table.currentTableBets[i] = -1
+					cntPlaying -= 1
+				}
+			}
+			if cntPlaying < 2 {
+				table.gameInProgress = false
+				table.wg.Done()
+				return
+			}
 			deck = table.startNewPot(table.gameNb)
 			log.Printf("\n[Table %v] Preflop", table.id)
 			table.doRoundTable(nil)
