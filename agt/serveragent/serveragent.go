@@ -204,10 +204,36 @@ func (server *ServerAgent) getTable(w http.ResponseWriter, r *http.Request) {
 		ids := make([]int, 5)
 		tokens := make([]int, 5)
 		bets := make([]int, 5)
+		actions := make([]string, 5)
 		for i, p := range server.tables[req.Table].Players() {
 			ids[i] = p.Id()
 			tokens[i] = p.CurrentTokens()
 			bets[i] = p.CurrentBet()
+			if server.turn == 0 {
+				if p.CurrentBet() == 0 {
+					actions[i] = "Je suis couché"
+				} else if p.CurrentBet() > 0 {
+					actions[i] = "Je mise"
+				} else if p.CurrentTokens() == 0 {
+					actions[i] = "Je ne peux plus jouer"
+				}
+			} else {
+				if p.CurrentBet() > 0 {
+					actions[i] = "Je mise"
+				} else if p.CurrentBet() == 0 {
+					var n int
+					for _, p2 := range server.tables[req.Table].Players() {
+						if p2.CurrentBet() > 0 {
+							n++
+						}
+					}
+					if n != 0 {
+						actions[i] = "Je suis couché"
+					} else if n == 0 {
+						actions[i] = "Je check"
+					}
+				}
+			}
 		}
 
 		log.Printf("[Serveur] Envoie des informations demandées\nIds : %v\nTokens : %v\nBets : %v\n", ids, tokens, bets)
@@ -216,6 +242,7 @@ func (server *ServerAgent) getTable(w http.ResponseWriter, r *http.Request) {
 			PlayersID:    ids,
 			PlayersToken: tokens,
 			PlayersBet:   bets,
+			//PlayersActions: actions,
 		}
 		data, _ := json.Marshal(send)
 		w.WriteHeader(http.StatusOK)
@@ -282,18 +309,45 @@ func (server *ServerAgent) update(w http.ResponseWriter, r *http.Request) {
 		ids := make([]int, 5)
 		tokens := make([]int, 5)
 		bets := make([]int, 5)
+		actions := make([]string, 5)
 		for i, p := range server.tables[req.Table].Players() {
 			ids[i] = p.Id()
 			tokens[i] = p.CurrentTokens()
 			bets[i] = p.CurrentBet()
+			if server.turn == 0 {
+				if p.CurrentBet() == 0 {
+					actions[i] = "Je suis couché"
+				} else if p.CurrentBet() > 0 {
+					actions[i] = "Je mise"
+				} else if p.CurrentTokens() == 0 {
+					actions[i] = "Je ne peux plus jouer"
+				}
+			} else {
+				if p.CurrentBet() > 0 {
+					actions[i] = "Je mise"
+				} else if p.CurrentBet() == 0 {
+					var n int
+					for _, p2 := range server.tables[req.Table].Players() {
+						if p2.CurrentBet() > 0 {
+							n++
+						}
+					}
+					if n != 0 {
+						actions[i] = "Je suis couché"
+					} else if n == 0 {
+						actions[i] = "Je check"
+					}
+				}
+			}
 		}
 
-		log.Printf("[Serveur] Envoie des informations demandées\nIds : %v\nTokens : %v\nBets : %v\n", ids, tokens, bets)
+		log.Printf("[Serveur] Envoie des informations demandées\nIds : %v\nTokens : %v\nBets : %v\nActions : %v\n", ids, tokens, bets, actions)
 		// Fournir l'état du tour actuel
 		send := agt.ResponseUpdate{
-			PlayersID:    ids,
-			PlayersToken: tokens,
-			PlayersBet:   bets,
+			PlayersID:      ids,
+			PlayersToken:   tokens,
+			PlayersBet:     bets,
+			PlayersActions: actions,
 		}
 		data, _ := json.Marshal(send)
 		w.WriteHeader(http.StatusOK)

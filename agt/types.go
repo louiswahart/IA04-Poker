@@ -53,7 +53,8 @@ type RequestUpdate struct {
 }
 
 type ResponseUpdate struct {
-	PlayersID    []int `json:"PlayersID"`
-	PlayersToken []int `json:"PlayersToken"`
-	PlayersBet   []int `json:"PlayersBet"`
+	PlayersID      []int    `json:"PlayersID"`
+	PlayersToken   []int    `json:"PlayersToken"`
+	PlayersBet     []int    `json:"PlayersBet"`
+	PlayersActions []string `json:"PlayersActions"`
 }
