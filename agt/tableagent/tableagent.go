@@ -178,7 +178,7 @@ func (table *TableAgent) newShuffledDeck() (deck []agt.Card) {
 func (table *TableAgent) doRoundTable(cards []agt.Card) {
 	var cnt int = 0
 	var i int = (table.smallBlindIndex + 2) % len(table.players) // On commence le tour juste après la grosse blinde
-	for cnt+1 < len(table.players) || table.currentTableBets[i] < table.currentBet {
+	for cnt < len(table.players) || table.currentTableBets[i] < table.currentBet {
 		if table.currentTableBets[i] != -1 {
 			log.Printf("[Table %v] --------- %v ---------", table.id, table.currentTableBets)
 			//bet := table.currentBet - table.currentTableBets[i]
@@ -253,9 +253,10 @@ func (table *TableAgent) distribEarnings(winners []int) {
 	gain := make([]int, len(table.players))
 	for player := range table.players {
 		reste[player] = table.auxPots[player]
-		for winner := range winners {
-			gain[winner] += rules.Min(table.auxPots[winner], table.auxPots[player]/len(winners))
-			reste[player] -= gain[winner]
+		for _, winner := range winners {
+			uGain := rules.Min(table.auxPots[winner], table.auxPots[player]/len(winners))
+			gain[winner] += uGain
+			reste[player] -= uGain
 		}
 		gain[player] += reste[player]
 	}
@@ -265,5 +266,4 @@ func (table *TableAgent) distribEarnings(winners []int) {
 				Cards: nil, CurrentBet: 0, Order: 0, NbTokens: gain[player]}, Response: 0}
 		}
 	}
-	table.wg.Done()
 }
