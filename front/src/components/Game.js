@@ -14,13 +14,17 @@ export default class Game extends React.Component {
             currentGame: 0,
             token: 0,
             idTable: 0,
-            menu: true,
+            menu: false,
             play: false,
             playersId : [],
             playersToken: [],
             playersBet: [],
             playersActions: [],
             playersCards: [[]],
+            playerTimidity :0,
+            playerAggressiveness:0,
+            playerRisk:0,
+            playerBluff:0
         };
 
         this.changedTable = this.changedTable.bind(this);
@@ -66,8 +70,21 @@ export default class Game extends React.Component {
         };
         fetch('http://localhost:8080/getTable', options)
             .then(resp => resp.json())
-            .then(data => this.setState({ playersId: data.PlayersID,  playersToken: data.PlayersToken, playersBet: data.PlayersBet}));
+            .then(data => this.setState({ playersId: data.PlayersID,  playersToken: data.PlayersToken, playersBet: data.PlayersBet,playersActions: data.PlayersActions}));
         this.setState({idTable : i})
+    }
+
+    changedPlayer(i){
+        console.log("Joueur : " + i);
+        const options = {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ Req: 'getPlayer', Player: Number(i)})
+        };
+        console.log("avant " + this.state.idTable)
+        fetch('http://localhost:8080/getPlayer', options)
+            .then(resp => resp.json())
+            .then(data => this.setState({ playerTimidity: data.Timidity,  playerAggressiveness: data.Aggressiveness, playerRisk: data.Risk,playerBluff: data.Bluff, idTable: data.Table},this.changedTable(data.Table)));
     }
 
     Play() {
@@ -184,6 +201,11 @@ export default class Game extends React.Component {
                             nbTable= {this.state.nbTable} 
                             nbPlayers= {5*this.state.nbTable}
                             onTableChanged={i => this.changedTable(i)}
+                            onPlayerChanged={i => this.changedPlayer(i)}
+                            Timidity={this.state.playerTimidity} 
+                            Aggressiveness={this.state.playerAggressiveness} 
+                            Risk={this.state.playerRisk}  
+                            Bluff={this.state.playerBluff} 
                         />
                     </div>
                 </div>

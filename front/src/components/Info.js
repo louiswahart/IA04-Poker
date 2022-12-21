@@ -2,12 +2,12 @@ import React from 'react';
 import Select from 'react-select';
 
 export default class Info extends React.Component {
-    constructor(props) {
-      super(props);
-    }
-
-    handleChange = (e) => {
+    handleChangeTable = (e) => {
       this.props.onTableChanged(e.value);
+    };
+
+    handleChangePlayer = (e) => {
+      this.props.onPlayerChanged(e.value);
     };
     
     render() {
@@ -29,17 +29,23 @@ export default class Info extends React.Component {
 
         return (
         <div>
-            <Select onChange={this.handleChange}
+            <Select onChange={this.handleChangeTable}
               name="Choix des tables"
               defaultValue={listTables[0]}
               maxMenuHeight={200}
               options = {listTables}
             />
-            <Select 
+            <Select onChange={this.handleChangePlayer}
               placeholder="Choix des joueurs"
               options = {listPlayers} 
               maxMenuHeight={200}
             />
+            <div className='joueurInfo'>
+              <p>Timidité : {this.props.Timidity}</p>
+              <p>Agressivité : {this.props.Aggressiveness}</p>
+              <p>Risque : {this.props.Risk}</p>
+              <p>Bluff : {this.props.Bluff}</p>
+            </div>
         </div>
         );
     }

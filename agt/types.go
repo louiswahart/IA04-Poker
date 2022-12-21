@@ -42,9 +42,23 @@ type RequestgetTable struct {
 }
 
 type ResponsegetTable struct {
-	PlayersID    []int `json:"PlayersID"`
-	PlayersToken []int `json:"PlayersToken"`
-	PlayersBet   []int `json:"PlayersBet"`
+	PlayersID      []int    `json:"PlayersID"`
+	PlayersToken   []int    `json:"PlayersToken"`
+	PlayersBet     []int    `json:"PlayersBet"`
+	PlayersActions []string `json:"PlayersActions"`
+}
+
+type RequestgetPlayer struct {
+	Req    string `json:"Req"`
+	Player int    `json:"Player"`
+}
+
+type ResponsegetPlayer struct {
+	Timidity       int `json:"Timidity"`
+	Aggressiveness int `json:"Aggressiveness"`
+	Risk           int `json:"Risk"`
+	Bluff          int `json:"Bluff"`
+	Table          int `json:"Table"`
 }
 
 type RequestUpdate struct {
