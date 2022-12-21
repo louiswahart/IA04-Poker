@@ -46,6 +46,14 @@ func (table *TableAgent) CurrentTurn() int {
 	return table.currentTurn
 }
 
+func (table *TableAgent) CurrentGame() int {
+	return table.gameNb
+}
+
+func (table *TableAgent) AuxPots() []int {
+	return table.auxPots
+}
+
 func (table *TableAgent) Start() {
 	log.Printf("[Table %v] Lancement de la table %v, channel {%v}", table.id, table.id, table.c)
 	for i := range table.players {
@@ -148,14 +156,12 @@ func (table *TableAgent) startNewPot(roundNb int) []agt.Card {
 	// Mises obligatoires des petites et grosses blindes
 	table.players[table.smallBlindIndex].C() <- agt.PlayerMessage{Request: agt.RequestMessage{Instruction: "mise",
 		Cards: nil, CurrentBet: smallBlind, Order: 0, NbTokens: 0}, Response: 0}
-	table.auxPots[table.smallBlindIndex] += smallBlind
 	resp := <-table.players[table.smallBlindIndex].C()
 	table.currentTableBets[table.smallBlindIndex] = resp.Response
 	table.currentBet = resp.Response
 
 	table.players[(table.smallBlindIndex+1)%len(table.players)].C() <- agt.PlayerMessage{Request: agt.RequestMessage{Instruction: "mise",
 		Cards: nil, CurrentBet: bigBlind, Order: 1, NbTokens: 0}, Response: 0}
-	table.auxPots[table.smallBlindIndex+1] += bigBlind
 	resp = <-table.players[(table.smallBlindIndex+1)%len(table.players)].C()
 	table.currentTableBets[(table.smallBlindIndex+1)%len(table.players)] = resp.Response
 	if resp.Response > table.currentBet {

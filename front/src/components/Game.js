@@ -2,6 +2,7 @@ import React from 'react';
 import Player from './Player'
 import Info from './Info'
 import Interactions from './Interactions'
+import State from './State'
 
 export default class Game extends React.Component {
     constructor(props) {
@@ -14,12 +15,14 @@ export default class Game extends React.Component {
             currentGame: 0,
             token: 0,
             idTable: 0,
-            menu: false,
+            menu: true,
             play: false,
+            pot:0,
             playersId : [],
             playersToken: [],
             playersBet: [],
             playersActions: [],
+            playersWinner: [],
             playersCards: [[]],
             playerTimidity :0,
             playerAggressiveness:0,
@@ -54,7 +57,7 @@ export default class Game extends React.Component {
                     };
                     fetch('http://localhost:8080/update', options)
                         .then(resp => resp.json())
-                        .then(data => this.setState({ playersId: data.PlayersID,  playersToken: data.PlayersToken, playersBet: data.PlayersBet,playersActions: data.PlayersActions}));
+                        .then(data => this.setState({ playersId: data.PlayersID,  playersToken: data.PlayersToken, playersBet: data.PlayersBet,playersActions: data.PlayersActions,playersWinner: data.PlayersWinner,pot: data.Pot}));
                 } else{
                     this.setState({play : false})
                 }
@@ -70,7 +73,7 @@ export default class Game extends React.Component {
         };
         fetch('http://localhost:8080/getTable', options)
             .then(resp => resp.json())
-            .then(data => this.setState({ playersId: data.PlayersID,  playersToken: data.PlayersToken, playersBet: data.PlayersBet,playersActions: data.PlayersActions}));
+            .then(data => this.setState({ playersId: data.PlayersID,  playersToken: data.PlayersToken, playersBet: data.PlayersBet,playersActions: data.PlayersActions,pot: data.Pot}));
         this.setState({idTable : i})
     }
 
@@ -148,65 +151,81 @@ export default class Game extends React.Component {
             {/* Affichage du jeu */}
             {!this.state.menu ?
                 <div>
-                    <div className="jeu">
-                        <div className="plateau">
-                            <Player 
-                                ID={this.state.playersId[0]} 
-                                nbToken={this.state.playersToken[0]} 
-                                bet={this.state.playersBet[0]}
-                                action={this.state.playersActions[0]} 
-                                listeCards={20}
-                            />
-                            <Player 
-                                ID={this.state.playersId[1]} 
-                                nbToken={this.state.playersToken[1]} 
-                                bet={this.state.playersBet[1]} 
-                                action={this.state.playersActions[1]} 
-                                listeCards={20}
-                            />
-                            <Player 
-                                ID={this.state.playersId[2]} 
-                                nbToken={this.state.playersToken[2]} 
-                                bet={this.state.playersBet[2]} 
-                                action={this.state.playersActions[2]} 
-                                listeCards={20}
-                            />
-                            <Player 
-                                ID={this.state.playersId[3]} 
-                                nbToken={this.state.playersToken[3]} 
-                                bet={this.state.playersBet[3]} 
-                                action={this.state.playersActions[3]} 
-                                listeCards={20}
-                            />
-                            <Player 
-                                ID={this.state.playersId[4]} 
-                                nbToken={this.state.playersToken[4]} 
-                                bet={this.state.playersBet[4]}  
-                                action={this.state.playersActions[4]} 
-                                listeCards={20}
-                            />
-                            </div>    
-                            <div className='rectangle'>
+                    <div className='all'>
+                        <div className="jeu">
+                            <div className="plateau">
+                                <div className='player1'>
+                                    <Player
+                                        ID={this.state.playersId[0]} 
+                                        nbToken={this.state.playersToken[0]} 
+                                        bet={this.state.playersBet[0]}
+                                        action={this.state.playersActions[0]}
+                                        winner={this.state.playersWinner[0]} 
+                                        listeCards={20}
+                                    />
+                                </div>
+                                <Player 
+                                    ID={this.state.playersId[1]} 
+                                    nbToken={this.state.playersToken[1]} 
+                                    bet={this.state.playersBet[1]} 
+                                    action={this.state.playersActions[1]} 
+                                    winner={this.state.playersWinner[1]}
+                                    listeCards={20}
+                                />
+                                <Player 
+                                    ID={this.state.playersId[2]} 
+                                    nbToken={this.state.playersToken[2]} 
+                                    bet={this.state.playersBet[2]} 
+                                    action={this.state.playersActions[2]} 
+                                    winner={this.state.playersWinner[2]}
+                                    listeCards={20}
+                                />
+                                <Player 
+                                    ID={this.state.playersId[3]} 
+                                    nbToken={this.state.playersToken[3]} 
+                                    bet={this.state.playersBet[3]} 
+                                    action={this.state.playersActions[3]} 
+                                    winner={this.state.playersWinner[3]}
+                                    listeCards={20}
+                                />
+                                <Player 
+                                    ID={this.state.playersId[4]} 
+                                    nbToken={this.state.playersToken[4]} 
+                                    bet={this.state.playersBet[4]}  
+                                    action={this.state.playersActions[4]} 
+                                    winner={this.state.playersWinner[4]}
+                                    listeCards={20}
+                                />
+                            </div> 
+                                <div className='rectangle'>
+                                    <div className='etat'>
+                                        <State
+                                            Turn={this.state.currentTurn}
+                                            Game={this.state.currentGame}
+                                            Pot={this.state.pot}
+                                        />
+                                    </div>
+                                </div>
+                            <div className="interactions">
+                                <Interactions 
+                                    onPlay={() => this.Play()}
+                                    onPause={() => this.Pause()}
+                                    onReset={() => this.Reset()}
+                                />
                             </div>
-                        <div className="interactions">
-                            <Interactions 
-                                onPlay={() => this.Play()}
-                                onPause={() => this.Pause()}
-                                onReset={() => this.Reset()}
+                        </div>  
+                        <div className="infos">
+                            <Info
+                                nbTable= {this.state.nbTable} 
+                                nbPlayers= {5*this.state.nbTable}
+                                onTableChanged={i => this.changedTable(i)}
+                                onPlayerChanged={i => this.changedPlayer(i)}
+                                Timidity={this.state.playerTimidity} 
+                                Aggressiveness={this.state.playerAggressiveness} 
+                                Risk={this.state.playerRisk}  
+                                Bluff={this.state.playerBluff} 
                             />
                         </div>
-                    </div>  
-                    <div className="infos">
-                        <Info
-                            nbTable= {this.state.nbTable} 
-                            nbPlayers= {5*this.state.nbTable}
-                            onTableChanged={i => this.changedTable(i)}
-                            onPlayerChanged={i => this.changedPlayer(i)}
-                            Timidity={this.state.playerTimidity} 
-                            Aggressiveness={this.state.playerAggressiveness} 
-                            Risk={this.state.playerRisk}  
-                            Bluff={this.state.playerBluff} 
-                        />
                     </div>
                 </div>
                 : null

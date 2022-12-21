@@ -46,6 +46,7 @@ type ResponsegetTable struct {
 	PlayersToken   []int    `json:"PlayersToken"`
 	PlayersBet     []int    `json:"PlayersBet"`
 	PlayersActions []string `json:"PlayersActions"`
+	Pot            int      `json:"Pot"`
 }
 
 type RequestgetPlayer struct {
@@ -71,4 +72,6 @@ type ResponseUpdate struct {
 	PlayersToken   []int    `json:"PlayersToken"`
 	PlayersBet     []int    `json:"PlayersBet"`
 	PlayersActions []string `json:"PlayersActions"`
+	PlayersWinner  []bool   `json:"PlayersWinner"`
+	Pot            int      `json:"Pot"`
 }

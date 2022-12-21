@@ -212,6 +212,10 @@ func (server *ServerAgent) getTable(w http.ResponseWriter, r *http.Request) {
 		tokens := make([]int, 5)
 		bets := make([]int, 5)
 		actions := make([]string, 5)
+		pot := 0
+		for _, a := range server.tables[req.Table].AuxPots() {
+			pot += a
+		}
 		for i, p := range server.tables[req.Table].Players() {
 			ids[i] = p.Id()
 			tokens[i] = p.CurrentTokens()
@@ -243,13 +247,14 @@ func (server *ServerAgent) getTable(w http.ResponseWriter, r *http.Request) {
 			}
 		}
 
-		log.Printf("[Serveur] Envoie des informations demandées\nIds : %v\nTokens : %v\nBets : %v\n", ids, tokens, bets)
+		log.Printf("[Serveur] Envoie des informations demandées\nIds : %v\nTokens : %v\nBets : %v\nPot : %v\n", ids, tokens, bets, pot)
 		// Fournir l'état du tour actuel
 		send := agt.ResponsegetTable{
 			PlayersID:      ids,
 			PlayersToken:   tokens,
 			PlayersBet:     bets,
 			PlayersActions: actions,
+			Pot:            pot,
 		}
 		data, _ := json.Marshal(send)
 		w.WriteHeader(http.StatusOK)
@@ -374,6 +379,12 @@ func (server *ServerAgent) update(w http.ResponseWriter, r *http.Request) {
 		tokens := make([]int, 5)
 		bets := make([]int, 5)
 		actions := make([]string, 5)
+		winners := make([]bool, 5)
+		pot := 0
+		for _, a := range server.tables[req.Table].AuxPots() {
+			pot += a
+		}
+		var win bool
 		for i, p := range server.tables[req.Table].Players() {
 			ids[i] = p.Id()
 			tokens[i] = p.CurrentTokens()
@@ -403,16 +414,30 @@ func (server *ServerAgent) update(w http.ResponseWriter, r *http.Request) {
 					}
 				}
 			}
+			/*for _, l := range server.tables[req.Table].Winners() {
+				if l == p.Id() {
+					win = true
+				}
+			}*/
+			if win {
+				winners[i] = true
+			} else {
+				winners[i] = false
+			}
+			win = false
 		}
 
-		log.Printf("[Serveur] Envoie des informations demandées\nIds : %v\nTokens : %v\nBets : %v\nActions : %v\n", ids, tokens, bets, actions)
+		log.Printf("[Serveur] Envoie des informations demandées\nIds : %v\nTokens : %v\nBets : %v\nActions : %v\nWinners : %v\nPot : %v\n", ids, tokens, bets, actions, winners, pot)
 		// Fournir l'état du tour actuel
 		send := agt.ResponseUpdate{
 			PlayersID:      ids,
 			PlayersToken:   tokens,
 			PlayersBet:     bets,
 			PlayersActions: actions,
+			PlayersWinner:  winners,
+			Pot:            pot,
 		}
+
 		data, _ := json.Marshal(send)
 		w.WriteHeader(http.StatusOK)
 		w.Write(data)

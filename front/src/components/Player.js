@@ -7,7 +7,7 @@ export default class Player extends React.Component{
         var listeCards = this.props.Cards
         return (
             <div>
-                <div className='joueur'>
+                <div className={this.props.winner ? 'background-green' : 'background-basic'}>
                     <p>ID : {this.props.ID}</p>
                     <p>Jetons : {this.props.nbToken}</p>
                     <p>Mise : {this.props.bet}</p>
