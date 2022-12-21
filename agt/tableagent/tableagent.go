@@ -148,14 +148,12 @@ func (table *TableAgent) startNewPot(roundNb int) []agt.Card {
 	// Mises obligatoires des petites et grosses blindes
 	table.players[table.smallBlindIndex].C() <- agt.PlayerMessage{Request: agt.RequestMessage{Instruction: "mise",
 		Cards: nil, CurrentBet: smallBlind, Order: 0, NbTokens: 0}, Response: 0}
-	table.auxPots[table.smallBlindIndex] += smallBlind
 	resp := <-table.players[table.smallBlindIndex].C()
 	table.currentTableBets[table.smallBlindIndex] = resp.Response
 	table.currentBet = resp.Response
 
 	table.players[(table.smallBlindIndex+1)%len(table.players)].C() <- agt.PlayerMessage{Request: agt.RequestMessage{Instruction: "mise",
 		Cards: nil, CurrentBet: bigBlind, Order: 1, NbTokens: 0}, Response: 0}
-	table.auxPots[table.smallBlindIndex+1] += bigBlind
 	resp = <-table.players[(table.smallBlindIndex+1)%len(table.players)].C()
 	table.currentTableBets[(table.smallBlindIndex+1)%len(table.players)] = resp.Response
 	if resp.Response > table.currentBet {
