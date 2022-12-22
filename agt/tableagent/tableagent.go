@@ -25,12 +25,13 @@ type TableAgent struct {
 	currentTableBets []int                     // La liste des mises actuelles de chaque joueur
 	smallBlindIndex  int                       // L'indice auquel se trouve la small blind (augmente de 1 à chaque nouvelle partie)
 	auxPots          []int                     // Pots annexes
+	winners          []int                     //liste des vainqueurs
 	gameInProgress   bool
 }
 
 // ------ CONSTRUCTOR ------
 func NewTableAgent(id int, c <-chan int, wg *sync.WaitGroup, players []playeragent.PlayerAgent) *TableAgent {
-	return &TableAgent{id: id, c: c, wg: wg, players: players, currentTurn: 0, cp: make([]chan agt.PlayerMessage, len(players)), gameNb: 0, currentBet: 0, currentTableBets: make([]int, len(players)), smallBlindIndex: -1, auxPots: make([]int, len(players)), gameInProgress: true}
+	return &TableAgent{id: id, c: c, wg: wg, players: players, currentTurn: 0, cp: make([]chan agt.PlayerMessage, len(players)), gameNb: 0, currentBet: 0, currentTableBets: make([]int, len(players)), smallBlindIndex: -1, auxPots: make([]int, len(players)), winners: make([]int, len(players)), gameInProgress: true}
 }
 
 // ------ GETTER ------
@@ -52,6 +53,10 @@ func (table *TableAgent) CurrentGame() int {
 
 func (table *TableAgent) AuxPots() []int {
 	return table.auxPots
+}
+
+func (table *TableAgent) Winners() []int {
+	return table.winners
 }
 
 func (table *TableAgent) Start() {
@@ -112,6 +117,7 @@ func (table *TableAgent) Start() {
 				table.distribEarnings(winners)
 			}
 		}
+		table.winners = winners
 		table.wg.Done()
 	}
 }

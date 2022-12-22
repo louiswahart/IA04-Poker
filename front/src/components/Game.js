@@ -73,7 +73,7 @@ export default class Game extends React.Component {
         };
         fetch('http://localhost:8080/getTable', options)
             .then(resp => resp.json())
-            .then(data => this.setState({ playersId: data.PlayersID,  playersToken: data.PlayersToken, playersBet: data.PlayersBet,playersActions: data.PlayersActions,pot: data.Pot}));
+            .then(data => this.setState({ playersId: data.PlayersID,  playersToken: data.PlayersToken, playersBet: data.PlayersBet,playersActions: data.PlayersActions,playersWinner: data.PlayersWinner,pot: data.Pot}));
         this.setState({idTable : i})
     }
 

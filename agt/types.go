@@ -46,6 +46,7 @@ type ResponsegetTable struct {
 	PlayersToken   []int    `json:"PlayersToken"`
 	PlayersBet     []int    `json:"PlayersBet"`
 	PlayersActions []string `json:"PlayersActions"`
+	PlayersWinner  []bool   `json:"PlayersWinner"`
 	Pot            int      `json:"Pot"`
 }
 

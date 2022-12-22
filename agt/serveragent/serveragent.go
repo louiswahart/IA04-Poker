@@ -212,7 +212,9 @@ func (server *ServerAgent) getTable(w http.ResponseWriter, r *http.Request) {
 		tokens := make([]int, 5)
 		bets := make([]int, 5)
 		actions := make([]string, 5)
+		winners := make([]bool, 5)
 		pot := 0
+		var win bool
 		for _, a := range server.tables[req.Table].AuxPots() {
 			pot += a
 		}
@@ -220,40 +222,28 @@ func (server *ServerAgent) getTable(w http.ResponseWriter, r *http.Request) {
 			ids[i] = p.Id()
 			tokens[i] = p.CurrentTokens()
 			bets[i] = p.CurrentBet()
-			if server.turn == 0 {
-				if p.CurrentBet() == 0 {
-					actions[i] = "Je suis couché"
-				} else if p.CurrentBet() > 0 {
-					actions[i] = "Je mise"
-				} else if p.CurrentTokens() == 0 {
-					actions[i] = "Je ne peux plus jouer"
-				}
-			} else {
-				if p.CurrentBet() > 0 {
-					actions[i] = "Je mise"
-				} else if p.CurrentBet() == 0 {
-					var n int
-					for _, p2 := range server.tables[req.Table].Players() {
-						if p2.CurrentBet() > 0 {
-							n++
-						}
-					}
-					if n != 0 {
-						actions[i] = "Je suis couché"
-					} else if n == 0 {
-						actions[i] = "Je check"
-					}
+			actions[i] = p.Action()
+			for _, l := range server.tables[req.Table].Winners() {
+				if l == i {
+					win = true
 				}
 			}
+			if win {
+				winners[i] = true
+			} else {
+				winners[i] = false
+			}
+			win = false
 		}
 
-		log.Printf("[Serveur] Envoie des informations demandées\nIds : %v\nTokens : %v\nBets : %v\nPot : %v\n", ids, tokens, bets, pot)
+		log.Printf("[Serveur] Envoie des informations demandées\nIds : %v\nTokens : %v\nBets : %v\nWinners : %v\nPot : %v\n", ids, tokens, bets, winners, pot)
 		// Fournir l'état du tour actuel
 		send := agt.ResponsegetTable{
 			PlayersID:      ids,
 			PlayersToken:   tokens,
 			PlayersBet:     bets,
 			PlayersActions: actions,
+			PlayersWinner:  winners,
 			Pot:            pot,
 		}
 		data, _ := json.Marshal(send)
@@ -389,36 +379,12 @@ func (server *ServerAgent) update(w http.ResponseWriter, r *http.Request) {
 			ids[i] = p.Id()
 			tokens[i] = p.CurrentTokens()
 			bets[i] = p.CurrentBet()
-			if server.turn == 0 {
-				if p.CurrentBet() == 0 {
-					actions[i] = "Je suis couché"
-				} else if p.CurrentBet() > 0 {
-					actions[i] = "Je mise"
-				} else if p.CurrentTokens() == 0 {
-					actions[i] = "Je ne peux plus jouer"
-				}
-			} else {
-				if p.CurrentBet() > 0 {
-					actions[i] = "Je mise"
-				} else if p.CurrentBet() == 0 {
-					var n int
-					for _, p2 := range server.tables[req.Table].Players() {
-						if p2.CurrentBet() > 0 {
-							n++
-						}
-					}
-					if n != 0 {
-						actions[i] = "Je suis couché"
-					} else if n == 0 {
-						actions[i] = "Je check"
-					}
-				}
-			}
-			/*for _, l := range server.tables[req.Table].Winners() {
-				if l == p.Id() {
+			actions[i] = p.Action()
+			for _, l := range server.tables[req.Table].Winners() {
+				if l == i {
 					win = true
 				}
-			}*/
+			}
 			if win {
 				winners[i] = true
 			} else {
