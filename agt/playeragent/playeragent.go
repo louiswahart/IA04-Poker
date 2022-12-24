@@ -25,7 +25,7 @@ type PlayerAgent struct {
 	nbPlay         int                      // Nombre de fois que le joueur à jouer sur le même tour
 	previousBet    int                      // Précédent Bet
 	isBlind        bool                     // Indication si le joueur joue une blind
-	isTapis        bool                     // Indication de si le joueur a fait tapis dans la partie en cours
+	isAllIn        bool                     // Indication de si le joueur a fait tapis dans la partie en cours
 }
 
 // ------ CONSTRUCTOR ------
@@ -90,8 +90,8 @@ func (player *PlayerAgent) IsBlind() bool {
 	return player.isBlind
 }
 
-func (player *PlayerAgent) IsTapis() bool {
-	return player.isTapis
+func (player *PlayerAgent) IsAllIn() bool {
+	return player.isAllIn
 }
 
 // ------ SETTER ------
@@ -157,7 +157,7 @@ func (player *PlayerAgent) augmentationMise(currentBet int) (mise int) {
 	if float64(player.aggressiveness+modif)/10.0 > float64(r) {
 		log.Printf("[Joueur %v] Je fais tapis\n", player.id)
 		mise = player.currentTokens
-		player.isTapis = true
+		player.isAllIn = true
 		// S'il ne fait pas tapis alors ajout de jetons en fonction de son agresivité (+ modif aléatoire)
 	} else {
 		log.Printf("[Joueur %v] Je ne fais pas tapis\n", player.id)
@@ -204,7 +204,7 @@ func (player *PlayerAgent) augmentationMise(currentBet int) (mise int) {
 			mise = ajout
 		} else {
 			mise = player.currentTokens
-			player.isTapis = true
+			player.isAllIn = true
 		}
 	}
 	return
@@ -216,7 +216,7 @@ func (player *PlayerAgent) play(currentBet int) int {
 	var mise int
 	if player.currentTokens <= currentBet {
 		mise = player.currentTokens
-		player.isTapis = true
+		player.isAllIn = true
 		log.Printf("[Joueur %v] Je fais tapis, pas assez de jeton pour suivre (ou pile le nombre)\n", player.id)
 		return mise
 	} else {
@@ -254,7 +254,7 @@ func (player *PlayerAgent) Start() {
 			player.previousBet = 0
 			player.nbPlay = 0
 			player.isBlind = false
-			player.isTapis = false
+			player.isAllIn = false
 
 		// Cas de la distribution
 		// Récupération des deux cartes
@@ -265,7 +265,7 @@ func (player *PlayerAgent) Start() {
 				player.previousNbCard = 0
 				player.previousBet = 0
 				player.nbPlay = 0
-				player.isTapis = false
+				player.isAllIn = false
 			}
 			player.isBlind = false
 
@@ -290,7 +290,7 @@ func (player *PlayerAgent) Start() {
 			//Si plus de jeton
 			if player.currentTokens == 0 {
 				// Si tapis en cours
-				if player.isTapis {
+				if player.isAllIn {
 					m.Response = 0
 					player.c <- m
 					log.Printf("[Joueur %v] Tapis en cours\n", player.id)
@@ -370,7 +370,7 @@ func (player *PlayerAgent) Start() {
 		// Cas d'une mise obligatoire = small ou big blind
 		case "mise":
 			player.isBlind = true
-			player.isTapis = false
+			player.isAllIn = false
 			player.currentBet = 0
 			player.previousNbCard = 0
 			player.previousBet = 0
@@ -379,7 +379,7 @@ func (player *PlayerAgent) Start() {
 			if mise > player.currentTokens {
 				log.Printf("[Joueur %v] Je dois faire tapis\n", player.id)
 				mise = player.currentTokens
-				player.isTapis = true
+				player.isAllIn = true
 			}
 			// Envoi de la mise à la table
 			m.Response = mise
@@ -403,7 +403,7 @@ func (player *PlayerAgent) Start() {
 			player.previousBet = 0
 			player.nbPlay = 0
 			player.isBlind = false
-			player.isTapis = false
+			player.isAllIn = false
 		}
 	}
 	// Arret de l'agent
