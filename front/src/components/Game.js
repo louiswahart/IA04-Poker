@@ -15,7 +15,7 @@ export default class Game extends React.Component {
             currentGame: 0,
             token: 0,
             idTable: 0,
-            menu: false,
+            menu: true,
             play: false,
             pot:0,
             playersId : [],
