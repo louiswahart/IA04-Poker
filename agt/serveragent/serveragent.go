@@ -106,7 +106,7 @@ func (server *ServerAgent) play(w http.ResponseWriter, r *http.Request) {
 		// Mise à jour du seed
 		rand.Seed(time.Now().UnixNano())
 
-		// Décode de la requête pour vérifier que correspond à la bonne action
+		// Décode de la requête pour vérifier qu'elle correspond à la bonne action
 		req, err := server.decodeRequestPlay(r)
 		if err != nil {
 			log.Printf("[Serveur] Err %v\n", err)
@@ -379,7 +379,7 @@ func (server *ServerAgent) update(w http.ResponseWriter, r *http.Request) {
 		}
 		server.wg.Wait()
 
-		// Récupération des informations a envoyer
+		// Récupération des informations à envoyer
 		ids := make([]int, 5)
 		tokens := make([]int, 5)
 		bets := make([]int, 5)

@@ -179,7 +179,7 @@ export default class Game extends React.Component {
             if(this.state.currentGame < this.state.nbGame){
                 etat = "En pause"
             } else{
-                etat = "Terminée (toutes les parties sont terminées)"
+                etat = "Terminé (toutes les parties sont terminées)"
             }
         }
 
