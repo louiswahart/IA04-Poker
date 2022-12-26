@@ -27,11 +27,12 @@ type TableAgent struct {
 	auxPots          []int                     // Pots annexes
 	winners          []int                     //liste des vainqueurs
 	gameInProgress   bool
+	cards            []agt.Card
 }
 
 // ------ CONSTRUCTOR ------
 func NewTableAgent(id int, c <-chan int, wg *sync.WaitGroup, players []playeragent.PlayerAgent) *TableAgent {
-	return &TableAgent{id: id, c: c, wg: wg, players: players, currentTurn: 0, cp: make([]chan agt.PlayerMessage, len(players)), gameNb: 0, currentBet: 0, currentTableBets: make([]int, len(players)), smallBlindIndex: -1, auxPots: make([]int, len(players)), winners: make([]int, len(players)), gameInProgress: true}
+	return &TableAgent{id: id, c: c, wg: wg, players: players, currentTurn: 0, cp: make([]chan agt.PlayerMessage, len(players)), gameNb: 0, currentBet: 0, currentTableBets: make([]int, len(players)), smallBlindIndex: -1, auxPots: make([]int, len(players)), winners: make([]int, 0), gameInProgress: true}
 }
 
 // ------ GETTER ------
@@ -59,6 +60,10 @@ func (table *TableAgent) Winners() []int {
 	return table.winners
 }
 
+func (table *TableAgent) Cards() []agt.Card {
+	return table.cards
+}
+
 func (table *TableAgent) Start() {
 	log.Printf("[Table %v] Lancement de la table %v, channel {%v}", table.id, table.id, table.c)
 	for i := range table.players {
@@ -81,6 +86,7 @@ func (table *TableAgent) Start() {
 		table.currentTurn = turnNb
 		winners := make([]int, 0)
 		if turnNb == 0 {
+			table.cards = []agt.Card{}
 			table.gameNb++
 			table.gameInProgress = true
 			table.smallBlindIndex = (table.smallBlindIndex + 1) % len(table.players)
@@ -127,18 +133,18 @@ func (table *TableAgent) doTurn(deck []agt.Card) {
 	if len(deck) == 0 {
 		return
 	}
-	cards := []agt.Card{}
+	table.cards = []agt.Card{}
 
 	switch table.currentTurn {
 	case 1: // Premier tour, retourner 3 cartes
-		cards = deck[:3]
+		table.cards = deck[:3]
 	case 2: // Deuxième tour, retourner 1 carte de plus
-		cards = deck[:4]
+		table.cards = deck[:4]
 	case 3: // Troisième tour, retourner 1 carte de plus
-		cards = deck[:5]
+		table.cards = deck[:5]
 	}
 
-	table.doRoundTable(cards)
+	table.doRoundTable(table.cards)
 
 	table.currentTurn++
 }

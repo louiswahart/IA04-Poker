@@ -294,7 +294,9 @@ func (player *PlayerAgent) Start() {
 			// Si la mise en cours est la même que la notre, de base on check
 			if player.currentBet == m.Request.CurrentBet {
 				mise = 0
-				player.action = "Je check"
+				if player.nbPlay == 0 || player.currentBet == 0 {
+					player.action = "Je check"
+				}
 			}
 
 			//Si plus de jeton
@@ -339,7 +341,9 @@ func (player *PlayerAgent) Start() {
 					player.action = "Je joue"
 				} else {
 					log.Printf("[Joueur %v] Je check\n", player.id)
-					player.action = "Je check"
+					if player.nbPlay == 0 || player.currentBet == 0 {
+						player.action = "Je check"
+					}
 				}
 				isPlayed = true
 			}
@@ -376,7 +380,7 @@ func (player *PlayerAgent) Start() {
 			if mise == -1 {
 				log.Printf("[Joueur %v] Je me couche\n", player.id)
 				player.action = "Je me couche"
-			} else {
+			} else if mise > 0 {
 				player.currentTokens -= mise
 				player.currentBet += mise
 				player.previousBet = player.currentBet
@@ -412,7 +416,7 @@ func (player *PlayerAgent) Start() {
 		// Cas d'un gain
 		case "gain":
 			log.Printf("[Joueur %v] Gain reçu : %v\n", player.id, m.Request.NbTokens)
-			player.action = "Je prends des gains"
+			//player.action = "Je prends des gains"
 			player.currentTokens += m.Request.NbTokens
 
 		// Fin de la partie, ajout des jetons de la partie précédente au total des jetons

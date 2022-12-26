@@ -5,8 +5,7 @@ export default class Interactions extends React.Component {
         return (
         <div>
             <div className='boutons'>
-                <button onClick={this.props.onPlay}>Jouer</button>
-                <button onClick={this.props.onPause}>Pause</button>
+                <button onClick={this.props.onPlayPause}>Play/Pause</button>
                 <button onClick={this.props.onReset}>Reset</button>
             </div>
         </div>

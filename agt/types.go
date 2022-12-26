@@ -36,18 +36,25 @@ type RequestPlay struct {
 	NbGames  int    `json:"NbGames"`
 }
 
+type RequestReset struct {
+	Req string `json:"Req"`
+}
+
 type RequestgetTable struct {
 	Req   string `json:"Req"`
 	Table int    `json:"Table"`
 }
 
 type ResponsegetTable struct {
-	PlayersID      []int    `json:"PlayersID"`
-	PlayersToken   []int    `json:"PlayersToken"`
-	PlayersBet     []int    `json:"PlayersBet"`
-	PlayersActions []string `json:"PlayersActions"`
-	PlayersWinner  []bool   `json:"PlayersWinner"`
-	Pot            int      `json:"Pot"`
+	PlayersID       []int    `json:"PlayersID"`
+	PlayersToken    []int    `json:"PlayersToken"`
+	PlayersBet      []int    `json:"PlayersBet"`
+	PlayersTotalBet []int    `json:"PlayersTotalBet"`
+	PlayersActions  []string `json:"PlayersActions"`
+	PlayersCards    [][]Card `json:"PlayersCards"`
+	PlayersWinner   []bool   `json:"PlayersWinner"`
+	Pot             int      `json:"Pot"`
+	TableCards      []Card   `json:"TableCards"`
 }
 
 type RequestgetPlayer struct {
@@ -69,10 +76,13 @@ type RequestUpdate struct {
 }
 
 type ResponseUpdate struct {
-	PlayersID      []int    `json:"PlayersID"`
-	PlayersToken   []int    `json:"PlayersToken"`
-	PlayersBet     []int    `json:"PlayersBet"`
-	PlayersActions []string `json:"PlayersActions"`
-	PlayersWinner  []bool   `json:"PlayersWinner"`
-	Pot            int      `json:"Pot"`
+	PlayersID       []int    `json:"PlayersID"`
+	PlayersToken    []int    `json:"PlayersToken"`
+	PlayersBet      []int    `json:"PlayersBet"`
+	PlayersTotalBet []int    `json:"PlayersTotalBet"`
+	PlayersActions  []string `json:"PlayersActions"`
+	PlayersCards    [][]Card `json:"PlayersCards"`
+	PlayersWinner   []bool   `json:"PlayersWinner"`
+	Pot             int      `json:"Pot"`
+	TableCards      []Card   `json:"TableCards"`
 }

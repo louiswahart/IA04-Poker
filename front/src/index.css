@@ -2,25 +2,23 @@
   width: 100%;
   height: 100%;
   position: absolute;
-  display: flex;
-  align-items: center;
 }
+
 .all{
   width: 100%;
   height: 100%;
-}
-
-.jeu,.infos{
-  display: inline-block;
-  vertical-align: top;
+  display: flex;
 }
 
 .jeu {
-  width:80%;
+  width: 80%;
+  height: 100%;
 }
 
 .infos{
-  width:19%;
+  width: 19%;
+  height: 100%;
+
 }
 
 .plateau {
@@ -31,16 +29,31 @@
   justify-content: center;
 }
 
-.player1 {
-  float: left;
+.Menu{
+  margin: auto;
+  text-align: center;
 }
 
-.background-green {
-  background-color: rgb(0, 255, 102);
+.zone1 {
+  width: 25%;
+  height: 100%;
 }
 
-.background-basic {
-  background-color: white;
+.zone2 {
+  width: 50%;
+  height: 100%;
+}
+
+.zone3 {
+  width: 25%;
+  height: 100%;
+}
+
+.rectangle {
+  margin: auto;
+  width:  75%;
+  height: 60%;
+  background: rgb(0, 128, 0, 0.75);
 }
 
 .interactions{
@@ -51,18 +64,88 @@
   justify-content: center;
 }
 
-.rectangle {
-  margin: auto;
-  width:  550px;
-  height: 550px;
-  background: green;
+.etat{
+  display: flex;
+  text-align: center;
+  justify-content: center;
 }
 
-.etat{
+.playerSideTop {
   width: 100%;
-  height: 150%;
+  height: 50%;
   display: flex;
   align-items: center;
+  justify-content: center;
+  margin-top: 40%;
+}
+
+.playerSideBottom {
+  width: 100%;
+  height: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.playerTop {
+  width: 100%;
+  height: 40%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.background-green {
+  background-color: rgb(0, 255, 102);
+}
+
+.background-basic {
+  background-color: white;
+}
+
+.background-grey {
+  color : grey;
+}
+
+.background-red {
+  background-color: rgba(253, 0, 0, 0.322);
+}
+
+.pJoueur, .pTable, .pStats{
+  line-height: 20%;
+}
+
+.Card{
+  line-height: 100%;
+  font-size: 425%;
+  display: inline-block;
+}
+
+.CardTable{
+  font-size: 700%;
+  display: inline-block;
+}
+
+.black{
+  color: black;
+}
+
+.red{
+  color: red;
+}
+
+label{
+  line-height: 200%;
+}
+
+input{
+  margin-left: 10px;
+}
+
+.tableZone{
+  width: 100%;
+  height: 50%;
+  text-align: center;
   justify-content: center;
 }
 

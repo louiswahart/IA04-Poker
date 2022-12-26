@@ -60,7 +60,6 @@ func (*ServerAgent) checkMethod(method string, r *http.Request) bool {
 func (*ServerAgent) decodeRequestPlay(r *http.Request) (req agt.RequestPlay, err error) {
 	buf := new(bytes.Buffer)
 	buf.ReadFrom(r.Body)
-	log.Printf("[Serveur] JSON %v\n", buf.String())
 	err = json.Unmarshal(buf.Bytes(), &req)
 	return
 }
@@ -99,6 +98,10 @@ func (server *ServerAgent) play(w http.ResponseWriter, r *http.Request) {
 	} else if server.checkMethod("POST", r) {
 		// Si POST
 		log.Println("[Serveur] Requête en play")
+
+		if server.tables != nil {
+			server.resetParameters()
+		}
 
 		// Mise à jour du seed
 		rand.Seed(time.Now().UnixNano())
@@ -211,18 +214,25 @@ func (server *ServerAgent) getTable(w http.ResponseWriter, r *http.Request) {
 		ids := make([]int, 5)
 		tokens := make([]int, 5)
 		bets := make([]int, 5)
+		totalBets := make([]int, 0)
 		actions := make([]string, 5)
 		winners := make([]bool, 5)
 		pot := 0
+		playerCards := make([][]agt.Card, 5)
+		tableCards := make([]agt.Card, 0)
 		var win bool
+		tableCards = append(tableCards, server.tables[req.Table].Cards()...)
 		for _, a := range server.tables[req.Table].AuxPots() {
 			pot += a
+			totalBets = append(totalBets, a)
 		}
 		for i, p := range server.tables[req.Table].Players() {
 			ids[i] = p.Id()
 			tokens[i] = p.CurrentTokens()
 			bets[i] = p.CurrentBet()
 			actions[i] = p.Action()
+			playerCards[i] = make([]agt.Card, 2)
+			playerCards[i] = p.Card()
 			for _, l := range server.tables[req.Table].Winners() {
 				if l == i {
 					win = true
@@ -236,15 +246,18 @@ func (server *ServerAgent) getTable(w http.ResponseWriter, r *http.Request) {
 			win = false
 		}
 
-		log.Printf("[Serveur] Envoie des informations demandées\nIds : %v\nTokens : %v\nBets : %v\nWinners : %v\nPot : %v\n", ids, tokens, bets, winners, pot)
+		log.Printf("[Serveur] Envoie des informations demandées\nIds : %v\nTokens : %v\nBets : %v\nTotal Bets : %v\nActions : %v\nCartes Joueur : %v\nWinners : %v\nPot : %v\nCartes Table : %v\n", ids, tokens, bets, totalBets, actions, playerCards, winners, pot, tableCards)
 		// Fournir l'état du tour actuel
 		send := agt.ResponsegetTable{
-			PlayersID:      ids,
-			PlayersToken:   tokens,
-			PlayersBet:     bets,
-			PlayersActions: actions,
-			PlayersWinner:  winners,
-			Pot:            pot,
+			PlayersID:       ids,
+			PlayersToken:    tokens,
+			PlayersBet:      bets,
+			PlayersTotalBet: totalBets,
+			PlayersActions:  actions,
+			PlayersCards:    playerCards,
+			PlayersWinner:   winners,
+			Pot:             pot,
+			TableCards:      tableCards,
 		}
 		data, _ := json.Marshal(send)
 		w.WriteHeader(http.StatusOK)
@@ -346,10 +359,12 @@ func (server *ServerAgent) update(w http.ResponseWriter, r *http.Request) {
 			if server.games >= server.nbGames {
 				log.Printf("[Serveur] Parties terminées, fermeture des tables\n")
 				// On ferme toutes les tables
-				for i := 0; i < server.nbTables; i++ {
-					server.c[i] <- -1
+				for i := 0; i < len(server.c); i++ {
+					close(server.c[i])
 				}
-				// INDIQUER LA FIN AU FRONT
+				server.c = nil
+				w.WriteHeader(http.StatusOK)
+				fmt.Fprintf(w, "Parties terminées, tables fermées !")
 				return
 			} else {
 				server.turn = 0
@@ -368,18 +383,25 @@ func (server *ServerAgent) update(w http.ResponseWriter, r *http.Request) {
 		ids := make([]int, 5)
 		tokens := make([]int, 5)
 		bets := make([]int, 5)
+		totalBets := make([]int, 0)
 		actions := make([]string, 5)
 		winners := make([]bool, 5)
 		pot := 0
+		playerCards := make([][]agt.Card, 5)
+		tableCards := make([]agt.Card, 0)
+		var win bool
+		tableCards = append(tableCards, server.tables[req.Table].Cards()...)
 		for _, a := range server.tables[req.Table].AuxPots() {
 			pot += a
+			totalBets = append(totalBets, a)
 		}
-		var win bool
 		for i, p := range server.tables[req.Table].Players() {
 			ids[i] = p.Id()
 			tokens[i] = p.CurrentTokens()
 			bets[i] = p.CurrentBet()
 			actions[i] = p.Action()
+			playerCards[i] = make([]agt.Card, 2)
+			playerCards[i] = p.Card()
 			for _, l := range server.tables[req.Table].Winners() {
 				if l == i {
 					win = true
@@ -393,15 +415,18 @@ func (server *ServerAgent) update(w http.ResponseWriter, r *http.Request) {
 			win = false
 		}
 
-		log.Printf("[Serveur] Envoie des informations demandées\nIds : %v\nTokens : %v\nBets : %v\nActions : %v\nWinners : %v\nPot : %v\n", ids, tokens, bets, actions, winners, pot)
+		log.Printf("[Serveur] Envoie des informations demandées\nIds : %v\nTokens : %v\nBets : %v\nTotal Bets : %v\nActions : %v\nCartes Joueur : %v\nWinners : %v\nPot : %v\nCartes Table : %v\n", ids, tokens, bets, totalBets, actions, playerCards, winners, pot, tableCards)
 		// Fournir l'état du tour actuel
 		send := agt.ResponseUpdate{
-			PlayersID:      ids,
-			PlayersToken:   tokens,
-			PlayersBet:     bets,
-			PlayersActions: actions,
-			PlayersWinner:  winners,
-			Pot:            pot,
+			PlayersID:       ids,
+			PlayersToken:    tokens,
+			PlayersBet:      bets,
+			PlayersTotalBet: totalBets,
+			PlayersActions:  actions,
+			PlayersCards:    playerCards,
+			PlayersWinner:   winners,
+			Pot:             pot,
+			TableCards:      tableCards,
 		}
 
 		data, _ := json.Marshal(send)
@@ -409,6 +434,36 @@ func (server *ServerAgent) update(w http.ResponseWriter, r *http.Request) {
 		w.Write(data)
 		log.Printf("[Serveur] Informations bien envoyées\n")
 	}
+}
+
+func (server *ServerAgent) resetParameters() {
+	server.nbTables = 50
+	server.nbGames = 50
+	server.turn = -1
+	server.games = 0
+	log.Printf("[Serveur] Paramètres reset")
+
+	//Fermeture des es TableAgents
+	log.Printf("[Serveur] Fermeture des tables")
+	for i := 0; i < len(server.c); i++ {
+		close(server.c[i])
+	}
+
+	// Reset channel
+	server.c = nil
+	log.Printf("[Serveur] Channels reset\n")
+
+	// Reset waitgroup
+	server.wg = nil
+	log.Printf("[Serveur] WaitGroup reset\n")
+
+	// Reset tableau de joueurs
+	server.players = nil
+	log.Printf("[Serveur] Joueurs reset\n")
+
+	// Reset tableau de tables
+	server.tables = nil
+	log.Printf("[Serveur] Tables reset\n")
 }
 
 func (serv *ServerAgent) Start() {
