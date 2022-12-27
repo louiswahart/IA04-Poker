@@ -25,6 +25,7 @@ type TableAgent struct {
 	currentTableBets []int                     // La liste des mises actuelles de chaque joueur
 	smallBlindIndex  int                       // L'indice auquel se trouve la small blind (augmente de 1 à chaque nouvelle partie)
 	auxPots          []int                     // Pots annexes
+	deck             []agt.Card
 	gameInProgress   bool
 	winners          []int
 }
@@ -33,7 +34,7 @@ type TableAgent struct {
 func NewTableAgent(id int, c <-chan int, wg *sync.WaitGroup, players []playeragent.PlayerAgent) *TableAgent {
 	return &TableAgent{id: id, c: c, wg: wg, players: players, currentTurn: 0,
 		cp: make([]chan agt.PlayerMessage, len(players)), gameNb: 0, currentBet: 0,
-		currentTableBets: make([]int, len(players)), smallBlindIndex: -1, auxPots: make([]int, len(players)),
+		currentTableBets: make([]int, len(players)), smallBlindIndex: -1, auxPots: make([]int, len(players)), deck: nil,
 		gameInProgress: true, winners: make([]int, len(players))}
 }
 
@@ -50,6 +51,19 @@ func (table *TableAgent) CurrentTurn() int {
 	return table.currentTurn
 }
 
+func (table *TableAgent) RevealedCards() []agt.Card {
+	switch table.currentTurn {
+	case 1: // Premier tour, 3 cartes ont été retournées
+		return table.deck[:3]
+	case 2: // Deuxième tour, 1 carte de plus retournée
+		return table.deck[:4]
+	case 3: // Troisième tour, 1 carte de plus retournée
+		return table.deck[:5]
+	default:
+		return nil
+	}
+}
+
 func (table *TableAgent) Start() {
 	log.Printf("[Table %v] Lancement de la table %v, channel {%v}", table.id, table.id, table.c)
 	for i := range table.players {
@@ -61,7 +75,7 @@ func (table *TableAgent) Start() {
 	}
 	table.wg.Done()
 
-	deck := []agt.Card{}
+	table.deck = []agt.Card{}
 
 	for turnNb := range table.c {
 		if turnNb < 0 {
@@ -92,7 +106,7 @@ func (table *TableAgent) Start() {
 			for !(table.players[table.smallBlindIndex].CurrentTokens() > 0) {
 				table.smallBlindIndex = (table.smallBlindIndex + 1) % len(table.players)
 			}
-			deck = table.startNewPot(table.gameNb)
+			table.deck = table.startNewPot(table.gameNb)
 			log.Printf("\n[Table %v] Preflop", table.id)
 			table.doRoundTable(nil)
 			winner := table.checkDefaultWinner()
@@ -102,14 +116,14 @@ func (table *TableAgent) Start() {
 				table.distribEarnings()
 			}
 		} else if table.gameInProgress {
-			table.doTurn(deck)
+			table.doTurn()
 			winner := table.checkDefaultWinner()
 			if winner != -1 {
 				table.winners = append(table.winners, winner)
 				table.gameInProgress = false
 				table.distribEarnings()
 			} else if turnNb == 3 {
-				table.winners = table.checkWinnersByScore(deck)
+				table.winners = table.checkWinnersByScore()
 				table.distribEarnings()
 			}
 		}
@@ -120,20 +134,20 @@ func (table *TableAgent) Start() {
 	}
 }
 
-func (table *TableAgent) doTurn(deck []agt.Card) {
+func (table *TableAgent) doTurn() {
 	log.Printf("[Table %v] Tour %v", table.id, table.currentTurn)
-	if len(deck) == 0 {
+	if len(table.deck) == 0 {
 		return
 	}
 	cards := []agt.Card{}
 
 	switch table.currentTurn {
 	case 1: // Premier tour, retourner 3 cartes
-		cards = deck[:3]
+		cards = table.deck[:3]
 	case 2: // Deuxième tour, retourner 1 carte de plus
-		cards = deck[:4]
+		cards = table.deck[:4]
 	case 3: // Troisième tour, retourner 1 carte de plus
-		cards = deck[:5]
+		cards = table.deck[:5]
 	}
 
 	table.doRoundTable(cards)
@@ -142,7 +156,7 @@ func (table *TableAgent) doTurn(deck []agt.Card) {
 }
 
 func (table *TableAgent) startNewPot(roundNb int) []agt.Card {
-	deck := table.newShuffledDeck()
+	table.deck = table.newShuffledDeck()
 
 	//table.totalPot = 0
 	for i := range table.players {
@@ -155,7 +169,7 @@ func (table *TableAgent) startNewPot(roundNb int) []agt.Card {
 	}
 
 	// On garde uniquement les cartes des joueurs (par 2), et les cartes qui seront posées sur la table
-	selection := deck[:len(table.players)*2+5]
+	selection := table.deck[:len(table.players)*2+5]
 
 	smallBlind := baseBlind * (roundNb/10 + 1)
 	bigBlind := 2 * smallBlind
@@ -256,12 +270,12 @@ func (table *TableAgent) checkDefaultWinner() int {
 	}
 }
 
-func (table *TableAgent) checkWinnersByScore(deck []agt.Card) (winners []int) {
+func (table *TableAgent) checkWinnersByScore() (winners []int) {
 	var maxScore int = -1
 	// Should only be executed at the end of the very last turn
 	for i := range table.players {
 		if table.currentTableBets[i] > -1 {
-			score := rules.CheckCombinations(table.players[i].Card(), deck)
+			score := rules.CheckCombinations(table.players[i].Card(), table.deck)
 			if score > maxScore {
 				maxScore = score
 				winners = make([]int, 1, len(table.players))
