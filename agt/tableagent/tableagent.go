@@ -10,7 +10,7 @@ import (
 	"gitlab.utc.fr/nivoixpa/ia04-poker/rules"
 )
 
-var baseBlind = 5
+var baseBlind = 50
 
 // ------ STRUCT ------
 type TableAgent struct {
@@ -26,11 +26,15 @@ type TableAgent struct {
 	smallBlindIndex  int                       // L'indice auquel se trouve la small blind (augmente de 1 à chaque nouvelle partie)
 	auxPots          []int                     // Pots annexes
 	gameInProgress   bool
+	winners          []int
 }
 
 // ------ CONSTRUCTOR ------
 func NewTableAgent(id int, c <-chan int, wg *sync.WaitGroup, players []playeragent.PlayerAgent) *TableAgent {
-	return &TableAgent{id: id, c: c, wg: wg, players: players, currentTurn: 0, cp: make([]chan agt.PlayerMessage, len(players)), gameNb: 0, currentBet: 0, currentTableBets: make([]int, len(players)), smallBlindIndex: -1, auxPots: make([]int, len(players)), gameInProgress: true}
+	return &TableAgent{id: id, c: c, wg: wg, players: players, currentTurn: 0,
+		cp: make([]chan agt.PlayerMessage, len(players)), gameNb: 0, currentBet: 0,
+		currentTableBets: make([]int, len(players)), smallBlindIndex: -1, auxPots: make([]int, len(players)),
+		gameInProgress: true, winners: make([]int, len(players))}
 }
 
 // ------ GETTER ------
@@ -61,16 +65,15 @@ func (table *TableAgent) Start() {
 
 	for turnNb := range table.c {
 		if turnNb < 0 {
-			return
+			break
 		}
 
 		// On met à jour le tour actuel récupéré à travers le channel
 		table.currentTurn = turnNb
-		winners := make([]int, 0)
 		if turnNb == 0 {
+			table.winners = make([]int, 0)
 			table.gameNb++
 			table.gameInProgress = true
-			table.smallBlindIndex = (table.smallBlindIndex + 1) % len(table.players)
 			cntPlaying := len(table.players)
 			for i := range table.players {
 				if !(table.players[i].CurrentTokens() > 0) {
@@ -81,28 +84,37 @@ func (table *TableAgent) Start() {
 			if cntPlaying < 2 {
 				table.gameInProgress = false
 				table.wg.Done()
-				return
+				log.Printf("[Table %v] Pas assez de joueurs", table.id)
+				break
+			}
+			// Make sure small blind is still in the game and has tokens
+			table.smallBlindIndex = (table.smallBlindIndex + 1) % len(table.players)
+			for !(table.players[table.smallBlindIndex].CurrentTokens() > 0) {
+				table.smallBlindIndex = (table.smallBlindIndex + 1) % len(table.players)
 			}
 			deck = table.startNewPot(table.gameNb)
 			log.Printf("\n[Table %v] Preflop", table.id)
 			table.doRoundTable(nil)
 			winner := table.checkDefaultWinner()
 			if winner != -1 {
-				winners = append(winners, winner)
+				table.winners = append(table.winners, winner)
 				table.gameInProgress = false
-				table.distribEarnings(winners)
+				table.distribEarnings()
 			}
 		} else if table.gameInProgress {
 			table.doTurn(deck)
 			winner := table.checkDefaultWinner()
 			if winner != -1 {
-				winners = append(winners, winner)
+				table.winners = append(table.winners, winner)
 				table.gameInProgress = false
-				table.distribEarnings(winners)
+				table.distribEarnings()
 			} else if turnNb == 3 {
-				winners = table.checkWinnersByScore(deck)
-				table.distribEarnings(winners)
+				table.winners = table.checkWinnersByScore(deck)
+				table.distribEarnings()
 			}
+		}
+		for i := range table.players {
+			close(table.players[i].C())
 		}
 		table.wg.Done()
 	}
@@ -135,7 +147,11 @@ func (table *TableAgent) startNewPot(roundNb int) []agt.Card {
 	//table.totalPot = 0
 	for i := range table.players {
 		table.auxPots[i] = 0
-		table.currentTableBets[i] = 0
+		if table.players[i].CurrentTokens() > 0 {
+			table.currentTableBets[i] = 0
+		} else {
+			table.currentTableBets[i] = -1
+		}
 	}
 
 	// On garde uniquement les cartes des joueurs (par 2), et les cartes qui seront posées sur la table
@@ -235,7 +251,7 @@ func (table *TableAgent) checkDefaultWinner() int {
 		log.Printf("[Table %v] Reste %v joueurs dans la partie", table.id, stillIn)
 		return -1
 	} else {
-		log.Printf("[Table %v] Joueur %v a gagné la partie", table.id, index)
+		log.Printf("[Table %v] Joueur %v a gagné la partie", table.id, table.players[index].Id())
 		return index
 	}
 }
@@ -259,13 +275,13 @@ func (table *TableAgent) checkWinnersByScore(deck []agt.Card) (winners []int) {
 	return winners
 }
 
-func (table *TableAgent) distribEarnings(winners []int) {
+func (table *TableAgent) distribEarnings() {
 	reste := make([]int, len(table.players))
 	gain := make([]int, len(table.players))
 	for player := range table.players {
 		reste[player] = table.auxPots[player]
-		for _, winner := range winners {
-			uGain := rules.Min(table.auxPots[winner], table.auxPots[player]/len(winners))
+		for _, winner := range table.winners {
+			uGain := rules.Min(table.auxPots[winner], table.auxPots[player]/len(table.winners))
 			gain[winner] += uGain
 			reste[player] -= uGain
 		}
