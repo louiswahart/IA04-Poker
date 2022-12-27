@@ -35,7 +35,7 @@ func NewTableAgent(id int, c <-chan int, wg *sync.WaitGroup, players []playerage
 	return &TableAgent{id: id, c: c, wg: wg, players: players, currentTurn: 0,
 		cp: make([]chan agt.PlayerMessage, len(players)), gameNb: 0, currentBet: 0,
 		currentTableBets: make([]int, len(players)), smallBlindIndex: -1, auxPots: make([]int, len(players)), deck: nil,
-		gameInProgress: true, winners: make([]int, len(players))}
+		gameInProgress: true, winners: make([]int, 0)}
 }
 
 // ------ GETTER ------
