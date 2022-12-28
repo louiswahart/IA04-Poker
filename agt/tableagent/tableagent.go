@@ -26,7 +26,6 @@ type TableAgent struct {
 	smallBlindIndex  int                       // L'indice auquel se trouve la small blind (augmente de 1 à chaque nouvelle partie)
 	auxPots          []int                     // Pots annexes
 	deck             []agt.Card
-	cards            []agt.Card
 	gameInProgress   bool
 	winners          []int
 }
@@ -65,10 +64,6 @@ func (table *TableAgent) Winners() []int {
 }
 
 func (table *TableAgent) Cards() []agt.Card {
-	return table.cards
-}
-
-func (table *TableAgent) RevealedCards() []agt.Card {
 	switch table.currentTurn {
 	case 1: // Premier tour, 3 cartes ont été retournées
 		return table.deck[:3]
@@ -102,7 +97,6 @@ func (table *TableAgent) Start() {
 		// On met à jour le tour actuel récupéré à travers le channel
 		table.currentTurn = turnNb
 		if turnNb == 0 {
-			table.cards = []agt.Card{}
 			table.winners = make([]int, 0)
 			table.gameNb++
 			table.gameInProgress = true
@@ -157,20 +151,18 @@ func (table *TableAgent) doTurn() {
 	if len(table.deck) == 0 {
 		return
 	}
-	table.cards = []agt.Card{}
+	cards := []agt.Card{}
 
 	switch table.currentTurn {
 	case 1: // Premier tour, retourner 3 cartes
-		table.cards = table.deck[:3]
+		cards = table.deck[:3]
 	case 2: // Deuxième tour, retourner 1 carte de plus
-		table.cards = table.deck[:4]
+		cards = table.deck[:4]
 	case 3: // Troisième tour, retourner 1 carte de plus
-		table.cards = table.deck[:5]
+		cards = table.deck[:5]
 	}
 
-	table.doRoundTable(table.cards)
-
-	table.currentTurn++
+	table.doRoundTable(cards)
 }
 
 func (table *TableAgent) startNewPot(roundNb int) []agt.Card {

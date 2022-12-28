@@ -267,7 +267,9 @@ func (player *PlayerAgent) Start() {
 		// Récupération des deux cartes
 		case "distrib":
 			player.cards = m.Request.Cards
-			if !player.isBlind {
+			if player.currentTokens == 0 {
+				player.action = "Je n'ai plus de jeton pour jouer"
+			} else if !player.isBlind {
 				player.currentBet = 0
 				player.previousNbCard = 0
 				player.previousBet = 0
