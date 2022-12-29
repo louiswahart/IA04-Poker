@@ -267,7 +267,7 @@ export default class Game extends React.Component {
 
     render() {
         let etat = "En cours"
-        if (this.state.error) etat = "Erreur de communication avec le serveur : " + this.state.error
+        if (this.state.error) etat = "Erreur de communication avec le serveur (reset nécessaire pour relancer) : " + this.state.error
         else if (this.state.finish) etat = "Terminé (toutes les parties sont terminées)"
         else if (!this.state.ready) etat = "Chargement des informations"
         else if(!this.state.play) etat = "En pause"

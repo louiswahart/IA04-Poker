@@ -453,8 +453,8 @@ func (server *ServerAgent) update(w http.ResponseWriter, r *http.Request) {
 		log.Printf("[Serveur] Lancement du tour : %v\n", server.turn)
 		// On envoie le signal du tour aux tables à travers le channel associé
 		for j := 0; j < server.nbTables; j++ {
-			server.c[j] <- server.turn
 			server.wg.Add(1)
+			server.c[j] <- server.turn
 		}
 		server.wg.Wait()
 
