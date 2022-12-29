@@ -22,16 +22,13 @@ Concernant les caractéristiques du projet, celles-ci sont liées en grande part
  
 Au niveau de l’aperçu sur le front, nous sommes censés observer le déroulement, tour par tour, d’une ou plusieurs parties de poker sur différentes tables. Ainsi on peut choisir le nombre de tables et de parties que l’on souhaite lancer et observer chacune des tables à tout moment en sélectionnant celle de notre choix. Nous pouvons aussi choisir d’observer un joueur en particulier et découvrir ses statistiques qui s’affichent en dessous du choix du joueur. Nous pouvons modifier les statistiques du joueur afin de les régler à notre guise.
 
-Au niveau de la table, on observe les cartes des joueurs de la table en cours et les cartes de la table à chaque tour. Un nouveau tour de jeu est réalisé toutes les 5 secondes (possiblement plus si il y a beaucoup de tables et donc beaucoup de calculs à réaliser). Nous avons choisis de n'afficher les résultats que tour par tour (et non action par action) afin que cela soit visuellement plus compréhensible et compact. Toutes les tables sont synchronisées, ainsi même si un vainqueur est désigné avant la fin d'une partie, la table attendra la fin de tous les tours de la partie pour passer à la suivante (et affichera donc les cartes qui auraient été affichées).
+Au niveau de la table, on observe les cartes des joueurs de la table en cours et les cartes de la table à chaque tour. Un nouveau tour de jeu est réalisé toutes les 5 secondes (possiblement plus si il y a beaucoup de tables et donc beaucoup de calculs à réaliser). Nous avons choisi de n'afficher les résultats que tour par tour (et non action par action) afin que cela soit visuellement plus compréhensible et compact. Toutes les tables sont synchronisées, ainsi même si un vainqueur est désigné avant la fin d'une partie, la table attendra la fin de tous les tours de la partie pour passer à la suivante (et affichera donc les cartes qui auraient été affichées).
 
-Afin de mieux comprendre le déroulement de chaque tour, l’interface affiche les mises par tour et par partie des joueurs ainsi que son action en cours, à la fin d'une partie est également affiché les bénéfices fait sur celle ci. Les joueurs réalisant une petite ou grosse blind ont également une indication visuel. Le gagnant d’une table voit son fond passer au vert tandis qu’un joueur n’ayant plus de jeton pour jouer passe au rouge. Au centre de la table, en plus de l’affichage des cartes, un point sur l’état actuel de la table, notamment le tour, la partie en cours et le pot total, est affiché. Il est possible à tout moment d'une partie de mettre celle ci en pause, ou alors de reset et recommencer une configuration de simulation.
+Afin de mieux comprendre le déroulement de chaque tour, l’interface affiche les mises par tour et par partie des joueurs ainsi que son action en cours, à la fin d'une partie est également affiché les bénéfices réalisés sur celle-ci. Les joueurs réalisant une petite ou grosse blind ont également une indication visuelle. Le gagnant d’une table voit son fond passer au vert tandis qu’un joueur n’ayant plus de jeton pour jouer passe au rouge. Au centre de la table, en plus de l’affichage des cartes, un point sur l’état actuel de la table, notamment le tour, la partie en cours et le pot total, est affiché. Il est possible à tout moment d'une partie de mettre celle-ci en pause, ou alors de reset et recommencer une configuration de simulation.
  
 ### « Quelle est la problématique à laquelle nous essayons de répondre ? »
  
- ????
-Finalement la problématique à laquelle nous essayons de répondre est la suivante : comment mettre en place une ou plusieurs parties de poker informatiquement tout en créant une interface visuelle et compréhensible pour l’utilisateur ?
-
-Finalement la problématique à laquelle nous essayons de répondre est la suivante : quels impacts ont les caractéristiques d'un joueur sur ses résultats dans des parties de pokers multi-agent ? Quelles infleunces peut il avoir sur les résultats des autres joueurs ? Ect.
+Finalement la problématique à laquelle nous essayons de répondre est la suivante : Quel est l'impact des caractéristiques d'un joueur sur ses résultats dans des parties de poker multi-agents ? Comment le joueur et ses caractéristiques peuvent influencer les résultats des autres joueurs ? 
 
 
  
@@ -48,11 +45,11 @@ Ainsi pour installer le projet GO et node.js sont requis.
 GO : https://go.dev/dl/  
 Node.js : https://nodejs.org/en/download/)
 
-Une fois fait, pour installer le frontend il faut installer les modules nécessaires via la commande suivante :
+Une fois cela fait, pour installer le frontend il faut installer les modules nécessaires via la commande suivante :
 
 **cd .\front ; npm install**
 
-Pour installer le backend il suffit de lancer la commande suivante (Rappel, les commandes doivent être lancées depuis le dossier racine du projet (ia04-poker)) :
+Pour installer le backend il suffit de lancer la commande suivante (Rappel : les commandes doivent être lancées depuis le dossier racine du projet (ia04-poker)) :
 
 **go install .\cmd\launch-server.go**
 
@@ -68,7 +65,7 @@ Pour lancer le frontend il suffira de faire :
 
 **cd .\front ; npm start .\front**
 
-La backend et le frontend fonctionneront en local. L'adresse du frontend doit obligatoirement être http://localhost:3000 pour que tout fonctionne correctement (valeur par défaut via npm start). Vous pourrez ainsi vous rendre via navigateur à l'adresse http://localhost:3000 (s'ouvre normalement automatiquement avec npm start) pour avoir accès au frontend et agir sur celui ci.
+La backend et le frontend fonctionneront en local. L'adresse du frontend doit obligatoirement être http://localhost:3000 pour que tout fonctionne correctement (valeur par défaut via npm start). Vous pourrez ainsi vous rendre via le navigateur à l'adresse http://localhost:3000 (s'ouvre normalement automatiquement avec npm start) pour avoir accès au frontend et agir sur celui ci.
 
 ### Architecture
 Notre architecture peut être décomposée en 4 grandes parties, le backend composé des agents joueurs, des agents tables et de l'agent serveur et du frontend. Voici une brève description de chacune de ses parties. 
@@ -91,12 +88,12 @@ Explication brève du Front
 ### Points positifs et négatifs / Améliorations possibles
 
 Positifs :
-Réalisation totalement fonctionnel
+Réalisation totalement fonctionnelle
 Parties respectant les vrais règles
-Joueur avec une certaines intelligence et réalisant de réelles actions
+Joueur avec une certaine intelligence et réalisant de réelles actions
 Communication importante entre table et joueur
 Front fonctionnel, interaction avec l'utilisateur (choix du nb de tables, de parties, changement de table, de joueur, modification des stats, pause, reset, etc)
-Indictions visuels
+Indications visuelles
 
 Négatifs / Améliorations :
 Travail plus complexe sur l'intelligence de jeu d'un joueur, moins utiliser le hasard
