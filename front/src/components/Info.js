@@ -98,14 +98,14 @@ export default class Info extends React.Component {
             <Select onChange={this.handleChangeTable}
               placeholder="Choisir une table"
               value={listTables[this.props.idTable]}
-              maxMenuHeight={1000}
+              maxMenuHeight={180}
               options = {listTables}
             />
             <Select onChange={this.handleChangePlayer}
               placeholder="Choisir un joueur"
               value={this.props.idPlayer === -1 ? null : listPlayers[this.props.idPlayer]}
               options = {listPlayers} 
-              maxMenuHeight={1000}
+              maxMenuHeight={180}
             />
             {this.props.loading ? <b><p>Chargement en cours</p></b> :
               (this.state.joueurInfo ? (<div className='joueurInfo'>
