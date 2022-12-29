@@ -334,7 +334,7 @@ export default class Game extends React.Component {
                                         winner={this.state.playersWinner[1]} 
                                         listeCards={this.state.playersCards[1]}
                                         result={this.state.playersGain[1]}
-                                        lastTurn={this.state.currentTurn == 3 && nbWinners >= 1}
+                                        lastTurn={this.state.currentTurn === 3 && nbWinners >= 1}
                                     />
                                 </div>
                                 <div className='playerSideBottom'>
@@ -348,7 +348,7 @@ export default class Game extends React.Component {
                                         winner={this.state.playersWinner[0]}
                                         listeCards={this.state.playersCards[0]}
                                         result={this.state.playersGain[0]}
-                                        lastTurn={this.state.currentTurn == 3 && nbWinners >= 1}
+                                        lastTurn={this.state.currentTurn === 3 && nbWinners >= 1}
                                     />
                                 </div>
                             </div>
@@ -364,7 +364,7 @@ export default class Game extends React.Component {
                                         winner={this.state.playersWinner[2]}
                                         listeCards={this.state.playersCards[2]}
                                         result={this.state.playersGain[2]}
-                                        lastTurn={this.state.currentTurn == 3 && nbWinners >= 1}
+                                        lastTurn={this.state.currentTurn === 3 && nbWinners >= 1}
                                     />
                                 </div>
                                 <div className='rectangle'>
@@ -395,7 +395,7 @@ export default class Game extends React.Component {
                                         winner={this.state.playersWinner[3]}
                                         listeCards={this.state.playersCards[3]}
                                         result={this.state.playersGain[3]}
-                                        lastTurn={this.state.currentTurn == 3 && nbWinners >= 1}
+                                        lastTurn={this.state.currentTurn === 3 && nbWinners >= 1}
                                     />
                                 </div>
                                 <div className='playerSideBottom'>
@@ -409,7 +409,7 @@ export default class Game extends React.Component {
                                         winner={this.state.playersWinner[4]}
                                         listeCards={this.state.playersCards[4]}
                                         result={this.state.playersGain[4]}
-                                        lastTurn={this.state.currentTurn == 3 && nbWinners >= 1}
+                                        lastTurn={this.state.currentTurn === 3 && nbWinners >= 1}
                                     />
                                 </div>
                             </div>

@@ -50,9 +50,9 @@ Node.js : https://nodejs.org/en/download/)
 
 Une fois fait, pour installer le frontend il faut installer les modules nécessaires via la commande suivante :
 
-**npm install .\front**
+**cd .\front ; npm install**
 
-Pour installer le backend il suffit de lancer la commande suivante :
+Pour installer le backend il suffit de lancer la commande suivante (Rappel, les commandes doivent être lancées depuis le dossier racine du projet (ia04-poker)) :
 
 **go install .\cmd\launch-server.go**
 
@@ -66,7 +66,7 @@ ou
 
 Pour lancer le frontend il suffira de faire :
 
-**npm start .\front**
+**cd .\front ; npm start .\front**
 
 La backend et le frontend fonctionneront en local. L'adresse du frontend doit obligatoirement être http://localhost:3000 pour que tout fonctionne correctement (valeur par défaut via npm start). Vous pourrez ainsi vous rendre via navigateur à l'adresse http://localhost:3000 (s'ouvre normalement automatiquement avec npm start) pour avoir accès au frontend et agir sur celui ci.
 
