@@ -111,8 +111,14 @@
   background-color: rgba(253, 0, 0, 0.322);
 }
 
-.pJoueur, .pTable, .pStats{
+.pJoueur, .pTable{
   line-height: 20%;
+  margin-bottom: 8px;
+}
+
+.pEtat{
+  padding: 0;
+  margin-top: 8px;
 }
 
 .Card{
@@ -147,6 +153,10 @@ input{
   height: 50%;
   text-align: center;
   justify-content: center;
+}
+
+.bold{
+  font-weight: bold;
 }
 
 

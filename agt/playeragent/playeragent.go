@@ -27,6 +27,7 @@ type PlayerAgent struct {
 	isBlind        bool                     // Indication si le joueur joue une blind
 	isAllIn        bool                     // Indication de si le joueur a fait tapis dans la partie en cours
 	action         string                   //action du joueur
+	lastEarning    int                      // Dernier gain du joueur
 }
 
 // ------ CONSTRUCTOR ------
@@ -97,6 +98,10 @@ func (player *PlayerAgent) IsAllIn() bool {
 
 func (player *PlayerAgent) Action() string {
 	return player.action
+}
+
+func (player *PlayerAgent) LastEarning() int {
+	return player.lastEarning
 }
 
 // ------ SETTER ------
@@ -263,21 +268,28 @@ func (player *PlayerAgent) Start() {
 			player.isBlind = false
 			player.isAllIn = false
 			player.action = ""
+			player.lastEarning = 0
+			m.Response = m.Request.NbTokens
+			player.c <- m
+
 		// Cas de la distribution
 		// Récupération des deux cartes
 		case "distrib":
 			player.cards = m.Request.Cards
+			player.lastEarning = 0
 			if player.currentTokens == 0 {
 				player.action = "Je n'ai plus de jeton pour jouer"
-			} else if !player.isBlind {
+			}
+			if !player.isBlind {
 				player.currentBet = 0
 				player.previousNbCard = 0
 				player.previousBet = 0
 				player.nbPlay = 0
 				player.isAllIn = false
-				player.action = ""
 			}
 			player.isBlind = false
+			m.Response = m.Request.NbTokens
+			player.c <- m
 
 		// Cas du tour de jeu
 		case "joue":
@@ -418,8 +430,10 @@ func (player *PlayerAgent) Start() {
 		// Cas d'un gain
 		case "gain":
 			log.Printf("[Joueur %v] Gain reçu : %v\n", player.id, m.Request.NbTokens)
-			//player.action = "Je prends des gains"
 			player.currentTokens += m.Request.NbTokens
+			player.lastEarning = m.Request.NbTokens
+			m.Response = m.Request.NbTokens
+			player.c <- m
 
 		// Fin de la partie, ajout des jetons de la partie précédente au total des jetons
 		case "fin":
@@ -432,8 +446,13 @@ func (player *PlayerAgent) Start() {
 			player.isBlind = false
 			player.isAllIn = false
 			player.action = ""
+			player.lastEarning = 0
 		}
 	}
 	// Arret de l'agent
+	player.action = "Terminé"
+	player.currentBet = 0
+	player.cards = nil
 	log.Printf("[Joueur %v] Arret\n", player.id)
+
 }

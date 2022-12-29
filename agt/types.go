@@ -47,11 +47,13 @@ type RequestgetTable struct {
 
 type ResponsegetTable struct {
 	PlayersID       []int    `json:"PlayersID"`
+	PlayersBlind    []int    `json:"PlayersBlind"`
 	PlayersToken    []int    `json:"PlayersToken"`
 	PlayersBet      []int    `json:"PlayersBet"`
 	PlayersTotalBet []int    `json:"PlayersTotalBet"`
 	PlayersActions  []string `json:"PlayersActions"`
 	PlayersCards    [][]Card `json:"PlayersCards"`
+	PlayersGain     []int    `json:"PlayersGain"`
 	PlayersWinner   []bool   `json:"PlayersWinner"`
 	Pot             int      `json:"Pot"`
 	TableCards      []Card   `json:"TableCards"`
@@ -70,6 +72,22 @@ type ResponsegetPlayer struct {
 	Table          int `json:"Table"`
 }
 
+type RequestchangeStats struct {
+	Req            string `json:"Req"`
+	Player         int    `json:"Player"`
+	Timidity       int    `json:"Timidity"`
+	Aggressiveness int    `json:"Aggressiveness"`
+	Risk           int    `json:"Risk"`
+	Bluff          int    `json:"Bluff"`
+}
+
+type ResponsechangeStats struct {
+	Timidity       int `json:"Timidity"`
+	Aggressiveness int `json:"Aggressiveness"`
+	Risk           int `json:"Risk"`
+	Bluff          int `json:"Bluff"`
+}
+
 type RequestUpdate struct {
 	Req   string `json:"Req"`
 	Table int    `json:"Table"`
@@ -77,10 +95,12 @@ type RequestUpdate struct {
 
 type ResponseUpdate struct {
 	PlayersID       []int    `json:"PlayersID"`
+	PlayersBlind    []int    `json:"PlayersBlind"`
 	PlayersToken    []int    `json:"PlayersToken"`
 	PlayersBet      []int    `json:"PlayersBet"`
 	PlayersTotalBet []int    `json:"PlayersTotalBet"`
 	PlayersActions  []string `json:"PlayersActions"`
+	PlayersGain     []int    `json:"PlayersGain"`
 	PlayersCards    [][]Card `json:"PlayersCards"`
 	PlayersWinner   []bool   `json:"PlayersWinner"`
 	Pot             int      `json:"Pot"`

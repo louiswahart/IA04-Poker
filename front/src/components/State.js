@@ -8,7 +8,7 @@ export default class State extends React.Component{
                 <p className='pTable'>Tour actuel : {this.props.Turn}</p>
                 <p className='pTable'>Partie actuelle : {this.props.Game}</p>
                 <p className='pTable'>Pot : {this.props.Pot}</p>
-                <p className='pTable'>Etat : {this.props.Etat}</p>
+                <p className='pEtat'>Etat : {this.props.Etat}</p>
             </div>
         )
     }

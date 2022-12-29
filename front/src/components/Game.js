@@ -22,21 +22,29 @@ export default class Game extends React.Component {
             play: false,
             pot:0,
             playersId : [],
+            playersBlind: [],
             playersToken: [],
             playersBet: [],
             playersTotalBet: [],
             playersActions: [],
             playersWinner: [],
             playersCards: [[], [], [], [], []],
+            playersGain: [],
             playerTimidity :0,
             playerAggressiveness:0,
             playerRisk:0,
-            playerBluff:0
+            playerBluff:0,
+            error : null,
+            ready : true,
+            finish : false,
+            loading : false
         };
 
         this.verifyRequestNeeded = this.verifyRequestNeeded.bind(this);
         this.requestUpdate = this.requestUpdate.bind(this);
         this.changedTable = this.changedTable.bind(this);
+        this.changedPlayer = this.changedPlayer.bind(this);
+        this.changedStats = this.changedStats.bind(this);
         this.PlayPause = this.PlayPause.bind(this);
         this.Reset = this.Reset.bind(this);
         this.changeNbGame = this.changeNbGame.bind(this);
@@ -46,76 +54,142 @@ export default class Game extends React.Component {
 
     componentDidMount(){
         setInterval(() => {
-            if(this.state.play){
-                this.setState({currentTurn : (this.state.currentTurn + 1)}, function() {
-                        if(this.state.currentTurn>=4){
-                            this.setState({
-                                currentGame : (this.state.currentGame + 1),
-                                currentTurn : 0}, function() {
-                                    this.verifyRequestNeeded()
-                            })
-                        } else{
-                            this.verifyRequestNeeded()
-                        }
+            if(this.state.ready && this.state.play && !this.state.finish){
+                let newTurn = this.state.currentTurn + 1
+                let newGame = this.state.currentGame
+                if(newTurn>=4){
+                    newTurn = 0
+                    newGame = this.state.currentGame + 1
+                    this.verifyRequestNeeded(newTurn, newGame)
+                } else{
+                    this.verifyRequestNeeded(newTurn, newGame)
                 }
-                )
              }}, 5000)
     }
 
-    verifyRequestNeeded(){
-        if(this.state.currentGame < this.state.nbGame){
-            this.requestUpdate(false);
+    verifyRequestNeeded(currentTurn, currentGame){
+        if(currentGame < this.state.nbGame){
+            this.requestUpdate(false, currentTurn, currentGame);
         } else{
-            this.setState({play : false})
-            this.requestUpdate(true);
+            this.setState({
+                play : false,
+                finish : true})
+            this.requestUpdate(true, currentTurn, currentGame);
         }
     }
 
-    requestUpdate(fin){
+    requestUpdate(fin, currentTurn, currentGame){
         if(fin){
-            const options = {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ Req: 'update', Table: Number(this.state.idTable)})
-            };
-            fetch('http://localhost:8080/update', options)
-                .then(resp => console.log(resp.statusText));
+            this.setState({ready: false}, () => {
+                const options = {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ Req: 'update', Table: Number(this.state.idTable)})
+                };
+                fetch('http://localhost:8080/update', options)
+                    .then(
+                        (resp) => {
+                            this.setState({
+                                error: null,
+                                ready: true,
+                                currentTurn: currentTurn,
+                                currentGame: currentGame
+                            }, this.changedTable(this.state.idTable));           
+                        },
+                        (error) => {
+                            this.setState({
+                                error: error.message
+                            });
+                        }
+                    )
+                }
+            )
         } else{
-            const options = {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ Req: 'update', Table: Number(this.state.idTable)})
-            };
-            fetch('http://localhost:8080/update', options)
-                .then(resp => resp.json())
-                .then(data => this.setState({ playersId: data.PlayersID,  playersToken: data.PlayersToken, playersBet: data.PlayersBet, playersTotalBet : data.PlayersTotalBet, playersActions: data.PlayersActions, playersCards: data.PlayersCards, playersWinner: data.PlayersWinner, pot: data.Pot, tableCards: data.TableCards}));
-            }
+            this.setState({ready: false}, () => {
+                const options = {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ Req: 'update', Table: Number(this.state.idTable)})
+                };
+                fetch('http://localhost:8080/update', options)
+                    .then(resp => resp.json())
+                    .then((data) => this.setState({ playersId: data.PlayersID,  playersBlind: data.PlayersBlind,  playersToken: data.PlayersToken, playersBet: data.PlayersBet, playersTotalBet : data.PlayersTotalBet, playersActions: data.PlayersActions, playersCards: data.PlayersCards, playersGain : data.PlayersGain, playersWinner: data.PlayersWinner, pot: data.Pot, tableCards: data.TableCards, error:null, ready: true, currentTurn: currentTurn, currentGame: currentGame}),
+                        (error) => {
+                            this.setState({
+                                error: error.message
+                            });
+                        }
+                    );
+                }
+            );
+        }
     }
 
     changedTable(i){
-        console.log("Table : " + i);
-        const options = {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ Req: 'getTable', Table: Number(i)})
-        };
-        fetch('http://localhost:8080/getTable', options)
-            .then(resp => resp.json())
-            .then(data => this.setState({ playersId: data.PlayersID,  playersToken: data.PlayersToken, playersBet: data.PlayersBet, playersTotalBet : data.PlayersTotalBet, playersActions: data.PlayersActions, playersCards: data.PlayersCards, playersWinner: data.PlayersWinner, pot: data.Pot, tableCards: data.TableCards}));
-        this.setState({idTable : i}, this.setState({idPlayer : (Math.trunc(this.state.idPlayer/5) === i ? this.state.idPlayer : -1)}))
+        this.setState({ready: false,
+        loading : true}, () => {
+            const options = {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ Req: 'getTable', Table: Number(i)})
+            };
+            fetch('http://localhost:8080/getTable', options)
+                .then(resp => resp.json())
+                .then((data )=> this.setState({ playersId: data.PlayersID,  playersBlind: data.PlayersBlind,  playersToken: data.PlayersToken, playersBet: data.PlayersBet, playersTotalBet : data.PlayersTotalBet, playersActions: data.PlayersActions, playersCards: data.PlayersCards, playersGain : data.PlayersGain, playersWinner: data.PlayersWinner, pot: data.Pot, tableCards: data.TableCards, error:null, ready:true, loading : false}),
+                    (error) => {
+                        this.setState({
+                            error: error.message
+                        });
+                    }
+                );
+            this.setState({idTable : i}, this.setState({idPlayer : (Math.trunc(this.state.idPlayer/5) === i ? this.state.idPlayer : -1)}))
+            }
+        )
     }
 
     changedPlayer(i){
-        console.log("Joueur : " + i);
-        const options = {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ Req: 'getPlayer', Player: Number(i)})
-        };
-        console.log("avant " + this.state.idTable)
-        fetch('http://localhost:8080/getPlayer', options)
-            .then(resp => resp.json())
-            .then(data => this.setState({ playerTimidity: data.Timidity,  playerAggressiveness: data.Aggressiveness, playerRisk: data.Risk,playerBluff: data.Bluff}, this.setState({idPlayer : i}, this.changedTable(data.Table))));
+        this.setState({ready: false,
+            loading : true}, () => {
+            const options = {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ Req: 'getPlayer', Player: Number(i)})
+            };
+            fetch('http://localhost:8080/getPlayer', options)
+                .then(resp => resp.json())
+                .then((data) => this.setState({ playerTimidity: data.Timidity,  playerAggressiveness: data.Aggressiveness, playerRisk: data.Risk,playerBluff: data.Bluff, error: null, ready:true, loading : false}, this.setState({idPlayer : i}, this.changedTable(data.Table))),
+                    (error) => {
+                        this.setState({
+                            error: error.message
+                        });
+                    }
+                );
+            }
+        )
+    }
+
+    changedStats(i, t, a, r, b){
+        this.setState({ready: false,
+            loading : true}, () => {
+            const options = {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ Req: 'changeStats', Player: Number(i), Timidity : Number(t), Aggressiveness : Number(a), Risk : Number(r), Bluff : Number(b)})
+            };
+            fetch('http://localhost:8080/changeStats', options)
+                .then(resp => resp.json())
+                .then(
+                    (data) => {
+                        this.setState({ playerTimidity: data.Timidity,  playerAggressiveness: data.Aggressiveness, playerRisk: data.Risk, playerBluff: data.Bluff, error: null, ready:true, loading : false})
+                    },
+                    (error) => {
+                        this.setState({
+                            error: error.message
+                        });
+                    }
+                );
+            }
+        )
     }
 
     PlayPause() {
@@ -136,16 +210,22 @@ export default class Game extends React.Component {
             play: false,
             pot:0,
             playersId : [],
+            playersBlind: [],
             playersToken: [],
             playersBet: [],
             playersTotalBet: [],
             playersActions: [],
             playersWinner: [],
             playersCards: [[], [], [], [], []],
+            playersGain: [],
             playerTimidity :0,
             playerAggressiveness:0,
             playerRisk:0,
-            playerBluff:0});
+            playerBluff:0,
+            error : null,
+            ready : true,
+            finish : false,
+            loading : false});
     }
 
     changeNbGame(event) {    
@@ -157,32 +237,41 @@ export default class Game extends React.Component {
     }
 
     handleSubmit(event) {
-        console.log(this.state.nbGame)
-        console.log(this.state.nbTable)
-
-        const options = {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ Req: 'play', NbTables : Number(this.state.nbTable),  NbGames : Number(this.state.nbGame)})
-        };
-        fetch('http://localhost:8080/play', options)
-            .then(resp => console.log(resp.statusText));
-
-        this.setState({menu : false})
-        this.setState({play : true})
-
+        event.preventDefault();
+        this.setState({ready: false,
+        loading : true}, () => {
+            const options = {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ Req: 'play', NbTables : Number(this.state.nbTable),  NbGames : Number(this.state.nbGame)})
+            };
+            fetch('http://localhost:8080/play', options)
+                .then(
+                    (resp) => {
+                        this.setState({
+                            menu : false,
+                            play : true, 
+                            error: null,
+                            ready: true,
+                            loading : false}, this.changedTable(this.state.idTable))            
+                    },
+                    (error) => {
+                        this.setState({
+                            error: error.message
+                        });
+                    }
+                )
+            }
+        )
     }
 
     render() {
         let etat = "En cours"
-        if(!this.state.play){
-            if(this.state.currentGame < this.state.nbGame){
-                etat = "En pause"
-            } else{
-                etat = "Terminé (toutes les parties sont terminées)"
-            }
-        }
-
+        if (this.state.error) etat = "Erreur de communication avec le serveur : " + this.state.error
+        else if (this.state.finish) etat = "Terminé (toutes les parties sont terminées)"
+        else if (!this.state.ready) etat = "Chargement des informations"
+        else if(!this.state.play) etat = "En pause"
+   
         let Cards = []
         this.state.tableCards.forEach(element => {
             let color = ""
@@ -194,6 +283,11 @@ export default class Game extends React.Component {
             Cards.push(
                 <div className={'CardTable ' + color} key = {element.Color.toString() + element.Value.toString()}>{getCard(element.Color, element.Value)}</div> 
               )    
+        });
+
+        let nbWinners = 0
+        this.state.playersWinner.forEach(element => {
+            if(element) nbWinners += 1
         });
 
         return (
@@ -216,6 +310,8 @@ export default class Game extends React.Component {
                         <br></br>
                         <input type="submit" value="Lancer" />
                     </form>
+                    {this.state.loading && <p><b>Chargement en cours ! Veuillez patientez.</b></p>}
+                    {this.state.error && <p>Erreur de comminication avec le serveur merci de vérifier que celui ci soit bien lancé !<br/>Erreur : {this.state.error}</p>}
                 </div>
                 : null
             }
@@ -229,37 +325,46 @@ export default class Game extends React.Component {
                             <div className='zone1'>
                                 <div className='playerSideTop'>
                                     <Player
-                                        ID={this.state.playersId[1]} 
+                                        ID={this.state.playersId[1]}
+                                        blind={this.state.playersBlind[1]} 
                                         nbToken={this.state.playersToken[1]} 
                                         bet={this.state.playersBet[1]}
                                         totalBet={this.state.playersTotalBet[1]}
                                         action={this.state.playersActions[1]}
                                         winner={this.state.playersWinner[1]} 
                                         listeCards={this.state.playersCards[1]}
+                                        result={this.state.playersGain[1]}
+                                        lastTurn={this.state.currentTurn == 3 && nbWinners >= 1}
                                     />
                                 </div>
                                 <div className='playerSideBottom'>
                                     <Player 
-                                        ID={this.state.playersId[0]} 
+                                        ID={this.state.playersId[0]}
+                                        blind={this.state.playersBlind[0]} 
                                         nbToken={this.state.playersToken[0]} 
                                         bet={this.state.playersBet[0]}
                                         totalBet={this.state.playersTotalBet[0]} 
                                         action={this.state.playersActions[0]} 
                                         winner={this.state.playersWinner[0]}
                                         listeCards={this.state.playersCards[0]}
+                                        result={this.state.playersGain[0]}
+                                        lastTurn={this.state.currentTurn == 3 && nbWinners >= 1}
                                     />
                                 </div>
                             </div>
                             <div className='zone2'>
                                 <div className='playerTop'>
                                     <Player 
-                                        ID={this.state.playersId[2]} 
+                                        ID={this.state.playersId[2]}
+                                        blind={this.state.playersBlind[2]} 
                                         nbToken={this.state.playersToken[2]} 
                                         bet={this.state.playersBet[2]}
                                         totalBet={this.state.playersTotalBet[2]} 
                                         action={this.state.playersActions[2]} 
                                         winner={this.state.playersWinner[2]}
                                         listeCards={this.state.playersCards[2]}
+                                        result={this.state.playersGain[2]}
+                                        lastTurn={this.state.currentTurn == 3 && nbWinners >= 1}
                                     />
                                 </div>
                                 <div className='rectangle'>
@@ -281,24 +386,30 @@ export default class Game extends React.Component {
                             <div className='zone3'>
                                 <div className='playerSideTop'>
                                     <Player 
-                                        ID={this.state.playersId[3]} 
+                                        ID={this.state.playersId[3]}
+                                        blind={this.state.playersBlind[3]} 
                                         nbToken={this.state.playersToken[3]} 
                                         bet={this.state.playersBet[3]}
                                         totalBet={this.state.playersTotalBet[3]} 
                                         action={this.state.playersActions[3]} 
                                         winner={this.state.playersWinner[3]}
                                         listeCards={this.state.playersCards[3]}
+                                        result={this.state.playersGain[3]}
+                                        lastTurn={this.state.currentTurn == 3 && nbWinners >= 1}
                                     />
                                 </div>
                                 <div className='playerSideBottom'>
                                     <Player 
-                                        ID={this.state.playersId[4]} 
+                                        ID={this.state.playersId[4]}
+                                        blind={this.state.playersBlind[4]} 
                                         nbToken={this.state.playersToken[4]} 
                                         bet={this.state.playersBet[4]}
                                         totalBet={this.state.playersTotalBet[4]}  
                                         action={this.state.playersActions[4]} 
                                         winner={this.state.playersWinner[4]}
                                         listeCards={this.state.playersCards[4]}
+                                        result={this.state.playersGain[4]}
+                                        lastTurn={this.state.currentTurn == 3 && nbWinners >= 1}
                                     />
                                 </div>
                             </div>
@@ -319,10 +430,12 @@ export default class Game extends React.Component {
                             idPlayer={this.state.idPlayer} 
                             onTableChanged={i => this.changedTable(i)}
                             onPlayerChanged={i => this.changedPlayer(i)}
+                            onStatsChanged={(i, t, a, r, b) => this.changedStats(i, t, a ,r ,b)}
                             Timidity={this.state.playerTimidity} 
                             Aggressiveness={this.state.playerAggressiveness} 
                             Risk={this.state.playerRisk}  
-                            Bluff={this.state.playerBluff} 
+                            Bluff={this.state.playerBluff}
+                            loading={this.state.loading} 
                         />
                     </div>
                 </>
