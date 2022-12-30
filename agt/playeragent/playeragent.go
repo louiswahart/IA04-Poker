@@ -26,6 +26,8 @@ type PlayerAgent struct {
 	previousBet    int                      // Précédent Bet
 	isBlind        bool                     // Indication si le joueur joue une blind
 	isAllIn        bool                     // Indication de si le joueur a fait tapis dans la partie en cours
+	action         string                   //action du joueur
+	lastEarning    int                      // Dernier gain du joueur
 }
 
 // ------ CONSTRUCTOR ------
@@ -94,6 +96,14 @@ func (player *PlayerAgent) IsAllIn() bool {
 	return player.isAllIn
 }
 
+func (player *PlayerAgent) Action() string {
+	return player.action
+}
+
+func (player *PlayerAgent) LastEarning() int {
+	return player.lastEarning
+}
+
 // ------ SETTER ------
 func (player *PlayerAgent) SetId(id int) {
 	player.id = id
@@ -141,7 +151,7 @@ func getRandom(n int) int {
 // Permet de choisir l'augmentation de mise
 func (player *PlayerAgent) augmentationMise(currentBet int) (mise int) {
 	log.Printf("[Joueur %v] J'augmente la mise\n", player.id)
-
+	player.action = "Je joue"
 	// Usage de l'agressivité pour savoir de combien on augmente la mise
 	// Utilisation de l'aléatoire pour trouver un nombre pour savoir si tapis ou non
 	// Utilisation de l'aléatoire pour attribuer une modification aléatoire sur l'agressivité
@@ -156,6 +166,7 @@ func (player *PlayerAgent) augmentationMise(currentBet int) (mise int) {
 	// Verification si le joueur fait un tapis ou pas
 	if float64(player.aggressiveness+modif)/10.0 > float64(r) {
 		log.Printf("[Joueur %v] Je fais tapis\n", player.id)
+		player.action = "Je fais tapis"
 		mise = player.currentTokens
 		player.isAllIn = true
 		// S'il ne fait pas tapis alors ajout de jetons en fonction de son agresivité (+ modif aléatoire)
@@ -218,6 +229,7 @@ func (player *PlayerAgent) play(currentBet int) int {
 		mise = player.currentTokens
 		player.isAllIn = true
 		log.Printf("[Joueur %v] Je fais tapis, pas assez de jeton pour suivre (ou pile le nombre)\n", player.id)
+		player.action = "Je fais tapis"
 		return mise
 	} else {
 		mise = currentBet - player.currentBet
@@ -255,12 +267,20 @@ func (player *PlayerAgent) Start() {
 			player.nbPlay = 0
 			player.isBlind = false
 			player.isAllIn = false
+			player.action = ""
+			player.lastEarning = 0
+			m.Response = m.Request.NbTokens
+			player.c <- m
 
 		// Cas de la distribution
 		// Récupération des deux cartes
 		case "distrib":
 			player.cards = m.Request.Cards
+			player.lastEarning = 0
 			if !player.isBlind {
+				if player.currentTokens == 0 {
+					player.action = "Je n'ai plus de jeton pour jouer"
+				}
 				player.currentBet = 0
 				player.previousNbCard = 0
 				player.previousBet = 0
@@ -268,6 +288,8 @@ func (player *PlayerAgent) Start() {
 				player.isAllIn = false
 			}
 			player.isBlind = false
+			m.Response = m.Request.NbTokens
+			player.c <- m
 
 		// Cas du tour de jeu
 		case "joue":
@@ -281,10 +303,14 @@ func (player *PlayerAgent) Start() {
 
 			// De base on se couche
 			mise := -1
+			player.action = "Je me couche"
 			isPlayed := false
 			// Si la mise en cours est la même que la notre, de base on check
 			if player.currentBet == m.Request.CurrentBet {
 				mise = 0
+				if player.nbPlay == 0 || player.currentBet == 0 {
+					player.action = "Je check"
+				}
 			}
 
 			//Si plus de jeton
@@ -294,10 +320,12 @@ func (player *PlayerAgent) Start() {
 					m.Response = 0
 					player.c <- m
 					log.Printf("[Joueur %v] Tapis en cours\n", player.id)
+					player.action = "Tapis en cours"
 				} else {
 					m.Response = -1
 					player.c <- m
 					log.Printf("[Joueur %v] Plus de jeton pour jouer\n", player.id)
+					player.action = "Je n'ai plus de jeton pour jouer"
 				}
 				continue
 			}
@@ -309,6 +337,7 @@ func (player *PlayerAgent) Start() {
 				log.Printf("[Joueur %v] Dernier à jouer, tout le monde a check, nombre aléatoire de %v | mon bluff : %v\n", player.id, r, player.bluff)
 				if player.bluff > r {
 					log.Printf("[Joueur %v] Je bluff\n", player.id)
+					player.action = "Je joue"
 					mise = player.play(m.Request.CurrentBet)
 					isPlayed = true
 				} else {
@@ -323,8 +352,12 @@ func (player *PlayerAgent) Start() {
 				log.Printf("[Joueur %v] Est ce que je vais augmenter la mise, nombre aléatoire de %v | ma timidité modifiée : %v\n", player.id, r, float64(player.timidity)*math.Pow(1.5, float64(player.nbPlay)))
 				if float64(player.timidity)*math.Pow(1.5, float64(player.nbPlay)) < float64(r) {
 					mise = player.augmentationMise(m.Request.CurrentBet)
+					player.action = "Je joue"
 				} else {
 					log.Printf("[Joueur %v] Je check\n", player.id)
+					if player.nbPlay == 0 || player.currentBet == 0 {
+						player.action = "Je check"
+					}
 				}
 				isPlayed = true
 			}
@@ -341,12 +374,14 @@ func (player *PlayerAgent) Start() {
 				log.Printf("[Joueur %v] Mon score doit être d'au moins : %v pour que je joue\n", player.id, min)
 				if float64(score) >= min {
 					mise = player.play(m.Request.CurrentBet)
+					player.action = "Je joue"
 					// Si je ne joue pas, vérification si je bluff, critère de bluff divisé par 4
 				} else {
 					r := getRandom(100)
 					log.Printf("[Joueur %v] Normalement je ne joue pas, est ce que je bluff ? nombre aléatoire de %v | mon bluff ajusté : %v\n", player.id, r, player.bluff/4)
 					if player.bluff/4 > r {
 						log.Printf("[Joueur %v] Je bluff\n", player.id)
+						player.action = "Je joue"
 						mise = player.play(m.Request.CurrentBet)
 					} else {
 						log.Printf("[Joueur %v] Je ne bluff pas\n", player.id)
@@ -358,7 +393,8 @@ func (player *PlayerAgent) Start() {
 			m.Response = mise
 			if mise == -1 {
 				log.Printf("[Joueur %v] Je me couche\n", player.id)
-			} else {
+				player.action = "Je me couche"
+			} else if mise > 0 {
 				player.currentTokens -= mise
 				player.currentBet += mise
 				player.previousBet = player.currentBet
@@ -375,9 +411,11 @@ func (player *PlayerAgent) Start() {
 			player.previousNbCard = 0
 			player.previousBet = 0
 			player.nbPlay = 0
+			player.action = "Je joue"
 			mise := m.Request.CurrentBet
-			if mise > player.currentTokens {
+			if mise >= player.currentTokens {
 				log.Printf("[Joueur %v] Je dois faire tapis\n", player.id)
+				player.action = "Je fais tapis"
 				mise = player.currentTokens
 				player.isAllIn = true
 			}
@@ -393,19 +431,15 @@ func (player *PlayerAgent) Start() {
 		case "gain":
 			log.Printf("[Joueur %v] Gain reçu : %v\n", player.id, m.Request.NbTokens)
 			player.currentTokens += m.Request.NbTokens
-
-		// Fin de la partie, ajout des jetons de la partie précédente au total des jetons
-		case "fin":
-			player.totalTokens += player.currentTokens
-			player.currentTokens = 0
-			player.currentBet = 0
-			player.previousNbCard = 0
-			player.previousBet = 0
-			player.nbPlay = 0
-			player.isBlind = false
-			player.isAllIn = false
+			player.lastEarning = m.Request.NbTokens
+			m.Response = m.Request.NbTokens
+			player.c <- m
 		}
 	}
 	// Arret de l'agent
+	player.action = "Terminé"
+	player.currentBet = 0
+	player.cards = nil
 	log.Printf("[Joueur %v] Arret\n", player.id)
+
 }
