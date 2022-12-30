@@ -71,11 +71,11 @@ La backend et le frontend fonctionneront en local. L'adresse du frontend doit ob
 Notre architecture peut être décomposée en 4 grandes parties, le backend composé des agents joueurs, des agents tables et de l'agent serveur et du frontend. Voici une brève description de chacune de ses parties. 
 
 #### Agents Joueurs
-Comme expliqué précédemment, l'agent joueur est défini par 4 principales caractéristiques qui sont la timidité, l’agressivité, la prise de risque, et la capacité de bluff (voir la Partie 1 pour des explications plus précises de ces caractéristiques). Les caractéristiques sont notées sur 100 (plus précisément de 0 à 99) et sont très souvent utilisées comme des probabilités d'action (par exemple une caractéristique de 80 pour indiquer une probabilité de 80% de chance de réaliser un certain choix, qui peut déboucher sur l'utilisation d'une autre caractéristique ou paramètre et ainsi de suite) mais pas uniquement (différents cas existes, qui seraient très long de détailler ici) ce qui permet d'avoir des joueurs qui ne font pas toujours la même chose et qui jouent vraiment selon leurs caractéristiques.
+Comme expliqué précédemment, l'agent joueur est défini par 4 principales caractéristiques qui sont la timidité, l’agressivité, la prise de risque, et la capacité de bluff (voir la Partie 1 pour des explications plus précises de ces caractéristiques). Les caractéristiques sont notées sur 100 (plus précisément de 0 à 99) et sont très souvent utilisées comme des probabilités d'action (par exemple une caractéristique de 80 pour indiquer une probabilité de 80% de chance de réaliser un certain choix, qui peut déboucher sur l'utilisation d'une autre caractéristique ou paramètre et ainsi de suite) mais pas uniquement (différents cas existes, ceux-ci étant très longs à détailler ici) ce qui permet d'avoir des joueurs qui ne font pas toujours la même chose et qui jouent vraiment selon leurs caractéristiques.
 
-Le joueur attend des informations de sa table, qui est le seul autre agent avec qui il est en communication via un channel. Lorsqu'il reçoit un message de celle ci, 5 situations sont possibles :
+Le joueur attend des informations de sa table, qui est le seul autre agent avec qui il est en communication via un channel. Lorsqu'il reçoit un message de celle-ci, 5 situations sont possibles :
 
-- La table lui indique le démarrage de la table et lui donne ses jetons, le joueur initialise alors à 0 ses différentes informations (mise actuel, cartes, etc) et met à jour son nombre de jeton.
+- La table lui indique le démarrage de la table et lui donne ses jetons, le joueur initialise alors à 0 ses différentes informations (mise actuelle, cartes, etc) et met à jour son nombre de jeton.
 
 - La table lui demande de miser (cas des grosses et petites blinds), le joueur lui renvoie alors la mise demandée (ou alors tapis si il n'a plus assez de jeton) et met à jours ses informations correspondantes.
 
@@ -83,9 +83,9 @@ Le joueur attend des informations de sa table, qui est le seul autre agent avec 
 
 - La table lui donne une nouvelle distribution, le joueur récupère ses deux cartes, comprend que c'est une nouvelle partie et met à jour ses informations en conséquence.
 
-- La table lui demande de jouer et lui donne notamment la mise actuel. Dans ce cas, le joueur va utiliser ses 4 caractéristiques décrites précédemment ainsi que sa situtation actuelle (mise actuel, mise en cours dans la table, combien de fois on lui a demandé de jouer, etc) pour choisir sa réponse, c'est à dire son action. Ainsi selon tous les paramètres décrits précedemment, le joueur peut se coucher s'il n'ose pas jouer (par exemple, à cause de sa main pas assez forte pour lui), il peut check si sa mise actuelle est égale à la mise de la table et qu'il ne veut pas l'augmenter, il peut suivre la mise actuelle en s'alignant ou alors il peut carrément augmenter la mise en ajoutant plus.
+- La table lui demande de jouer et lui donne notamment la mise actuelle. Dans ce cas, le joueur va utiliser ses 4 caractéristiques décrites précédemment ainsi que sa situtation actuelle (mise actuelle, mise en cours dans la table, combien de fois on lui a demandé de jouer, etc) pour choisir sa réponse, c'est à dire son action. Ainsi selon tous les paramètres décrits précedemment, le joueur peut se coucher s'il n'ose pas jouer (par exemple, à cause de sa main pas assez forte pour lui), il peut check si sa mise actuelle est égale à la mise de la table et qu'il ne veut pas l'augmenter, il peut suivre la mise actuelle en s'alignant ou alors il peut carrément augmenter la mise en ajoutant plus.
 
-Le joueur attend donc les demandes de la table et lui répond en conséquence et selon de nombreux paramètres qu'il prend en compte dans son choix de décision lorsqu'il joue. Une fois qu'une table se ferme, le channel de communication est également fermé ce qui indique au joueur la fin de la table et ainsi celui-ci met à jour ses informations en conséquence.
+Le joueur attend donc les demandes de la table et lui répond en conséquence et selon de nombreux paramètres qu'il prend en considération lorsqu'il joue. Une fois qu'une table se ferme, le channel de communication est également fermé ce qui indique au joueur la fin de la table. Ainsi, celui-ci met à jour ses informations en conséquence.
 
 #### Agents Tables
 Explication brève de la table
@@ -99,7 +99,7 @@ L'agent serveur est simplement constitué d'un ID et d'une adresse url. Ce const
 - Donner les informations d'un joueur avec **/getPlayer**
 - Modifier les statistiques d'un joueur avec **/changeStats**
 
-L'ensemble de ces informations sont transmises à partir d'un serveur REST et les données sont envoyées en JSON. D'ailleurs, il a fallu faire attention à accepter des données provenant de l'adresse liée au front (http://localhost:3000) mais aussi accepter des données JSON, cela est permis grâce à l'autorisation d'un contrôle d'accès. 
+L'ensemble de ces informations sont transmises à partir d'un serveur REST et les données sont envoyées en JSON. D'ailleurs, il a fallu faire attention à autoriser un contrôle d'accès permettant l'acceptation de données venant de l'adresse liée au front (http://localhost:3000), sinon un message d'erreur empêchait la communication.
 Lors du lancement du jeu, le serveur s'occupe de créer les joueurs et les tables et aussi de lancer l'ensemble de ces tables. De plus, à chaque tour, le serveur se charge, soit d'envoyer aux tables le tour à joueur en passant par un channel, soit si la partie est terminée, de fermer l'ensemble des tables.
 
 #### Front
