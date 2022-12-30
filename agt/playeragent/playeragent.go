@@ -277,10 +277,10 @@ func (player *PlayerAgent) Start() {
 		case "distrib":
 			player.cards = m.Request.Cards
 			player.lastEarning = 0
-			if player.currentTokens == 0 {
-				player.action = "Je n'ai plus de jeton pour jouer"
-			}
 			if !player.isBlind {
+				if player.currentTokens == 0 {
+					player.action = "Je n'ai plus de jeton pour jouer"
+				}
 				player.currentBet = 0
 				player.previousNbCard = 0
 				player.previousBet = 0
@@ -413,7 +413,7 @@ func (player *PlayerAgent) Start() {
 			player.nbPlay = 0
 			player.action = "Je joue"
 			mise := m.Request.CurrentBet
-			if mise > player.currentTokens {
+			if mise >= player.currentTokens {
 				log.Printf("[Joueur %v] Je dois faire tapis\n", player.id)
 				player.action = "Je fais tapis"
 				mise = player.currentTokens
@@ -434,19 +434,6 @@ func (player *PlayerAgent) Start() {
 			player.lastEarning = m.Request.NbTokens
 			m.Response = m.Request.NbTokens
 			player.c <- m
-
-		// Fin de la partie, ajout des jetons de la partie précédente au total des jetons
-		case "fin":
-			player.totalTokens += player.currentTokens
-			player.currentTokens = 0
-			player.currentBet = 0
-			player.previousNbCard = 0
-			player.previousBet = 0
-			player.nbPlay = 0
-			player.isBlind = false
-			player.isAllIn = false
-			player.action = ""
-			player.lastEarning = 0
 		}
 	}
 	// Arret de l'agent

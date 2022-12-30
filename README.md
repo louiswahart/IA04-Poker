@@ -30,7 +30,7 @@ Afin de mieux comprendre le déroulement de chaque tour, l’interface affiche l
  
 Finalement la problématique à laquelle nous essayons de répondre est la suivante : Quel est l'impact des caractéristiques d'un joueur sur ses résultats dans des parties de poker multi-agents ? Comment le joueur et ses caractéristiques peuvent influencer les résultats des autres joueurs ? 
 
-
+Ainsi nous pourrions dans le futur faire en sorte de réaliser des statistiques grâce à notre simulation de poker pour trouver quelles caractéristiques permettent de maximiser ses chances de victoire, les corrélations avec les caractéristiques des autres joueurs, voir si certaines sont très bonne face à certain type de joueur mais moins bonne face à d'autres, etc.
  
 ## 2) Installation et architecture du projet
 
@@ -108,3 +108,5 @@ Timidité
 Agressivité
 Risque
 Bluff
+Nb Jetons
+Blind
