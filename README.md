@@ -71,13 +71,27 @@ La backend et le frontend fonctionneront en local. L'adresse du frontend doit ob
 Notre architecture peut être décomposée en 4 grandes parties, le backend composé des agents joueurs, des agents tables et de l'agent serveur et du frontend. Voici une brève description de chacune de ses parties. 
 
 #### Agents Joueurs
-Explication brève du joueur
+Comme expliqué précédemment, l'agent joueur est défini par 4 principales caractéristiques qui sont la timidité, l’agressivité, la prise de risque, et la capacité de bluff (voir la Partie 1 pour des explications plus précises de ces caractéristiques). Les caractéristiques sont notées sur 100 (plus précisément de 0 à 99) et sont très souvent utilisées comme des probabilités d'action (par exemple une caractéristique de 80 pour indiquer une probabilité de 80% de chance de réaliser un certain choix, qui peut déboucher sur l'utilisation d'une autre caractéristique ou paramètre et ainsi de suite) mais pas uniquement (différents cas existes, qui seraient très long de détailler ici) ce qui permet d'avoir des joueurs qui ne font pas toujours la même chose et qui jouent vraiment selon leurs caractéristiques.
+
+Le joueur attend des informations de sa table, qui est le seul autre agent avec qui il est en communication via un channel. Lorsqu'il reçoit un message de celle ci, 5 situations sont possibles :
+
+- La table lui indique le démarrage de la table et lui donne ses jetons, le joueur initialise alors à 0 ses différentes informations (mise actuel, cartes, etc) et met à jour son nombre de jeton.
+
+- La table lui demande de miser (cas des grosses et petites blinds), le joueur lui renvoie alors la mise demandée (ou alors tapis si il n'a plus assez de jeton) et met à jours ses informations correspondantes.
+
+- La table lui donne un gain, alors le joueur les prend et met à jour ses informations.
+
+- La table lui donne une nouvelle distribution, le joueur récupère ses deux cartes, comprend que c'est une nouvelle partie et met à jour ses informations en conséquence.
+
+- La table lui demande de jouer et lui donne notamment la mise actuel. Dans ce cas, le joueur va utiliser ses 4 caractéristiques décrites précédemment ainsi que sa situtation actuelle (mise actuel, mise en cours dans la table, combien de fois on lui a demandé de jouer, etc) pour choisir sa réponse, c'est à dire son action. Ainsi selon tous les paramètres décrits précedemment, le joueur peut se coucher s'il n'ose pas jouer (par exemple, à cause de sa main pas assez forte pour lui), il peut check si sa mise actuelle est égale à la mise de la table et qu'il ne veut pas l'augmenter, il peut suivre la mise actuelle en s'alignant ou alors il peut carrément augmenter la mise en ajoutant plus.
+
+Le joueur attend donc les demandes de la table et lui répond en conséquence et selon de nombreux paramètres qu'il prend en compte dans son choix de décision lorsqu'il joue. Une fois qu'une table se ferme, le channel de communication est également fermé ce qui indique au joueur la fin de la table et ainsi celui-ci met à jour ses informations en conséquence.
 
 #### Agents Tables
 Explication brève de la table
 
 #### Agent Serveur
-L'agent serveur est simplement constitué d'un ID et d'une adresse url. Ce constrcuteur est d'ailleurs appelé lors du lancement, c'est le serveur qui va permettre de faire le lien entre le front et les tables. Celui-ci s'occupe d'ailleurs de récupérer les requètes envoyées par le front, récupère les informations de ces requètes et transmet une réponse avec les informations demandées. Le front peut requêter au serveur plusieurs types d'information :
+L'agent serveur est simplement constitué d'un ID et d'une adresse url. Ce constructeur est d'ailleurs appelé lors du lancement, c'est le serveur qui va permettre de faire le lien entre le front et les tables. Celui-ci s'occupe d'ailleurs de récupérer les requètes envoyées par le front, récupère les informations de ces requètes et transmet une réponse avec les informations demandées. Le front peut requêter au serveur plusieurs types d'information :
 
 - Lancer la partie avec **/play**
 - Mettre à jour les informations d'une table avec **/update**
@@ -85,13 +99,13 @@ L'agent serveur est simplement constitué d'un ID et d'une adresse url. Ce const
 - Donner les informations d'un joueur avec **/getPlayer**
 - Modifier les statistiques d'un joueur avec **/changeStats**
 
-L'ensemble de ces informations sont transmises à partir d'un serveur REST et les données sont envoyées sous en JSON. D'ailleurs, il a fallu faire attention à accepter des données provenant de l'adresse liée au front (http://localhost:3000) mais aussi accepter des données JSON, cela est permis grâce à l'autorisation d'un contrôle d'accès. 
+L'ensemble de ces informations sont transmises à partir d'un serveur REST et les données sont envoyées en JSON. D'ailleurs, il a fallu faire attention à accepter des données provenant de l'adresse liée au front (http://localhost:3000) mais aussi accepter des données JSON, cela est permis grâce à l'autorisation d'un contrôle d'accès. 
 Lors du lancement du jeu, le serveur s'occupe de créer les joueurs et les tables et aussi de lancer l'ensemble de ces tables. De plus, à chaque tour, le serveur se charge, soit d'envoyer aux tables le tour à joueur en passant par un channel, soit si la partie est terminée, de fermer l'ensemble des tables.
 
 #### Front
 Le front a été construit de manière à créer un fichier par composant. Le composant principal réprésenté par le fichier *Game.js* est appelé par l'application racine React. On retrouve également un composant pour les cartes, un pour les informations liées à la sélection de la table, d'un joueur et de ses statistiques. Un autre composant permet de gérer les interactions pour jouer, mettre en pause ou choisir une nouvelle configuration. Un composant lié aux joueurs est aussi présent, ainsi qu'un composant gérant l'affichage de l'état actuel de la table. 
 
-L'architecture permet donc une bonne visiblité des composants disponibles et de leur effet au niveau visuel. Les requêtes réalisées au niveau du front sont envoyées par le composant représentant le jeu dans son ensemble. En effet, c'est notamment à travers ce composant que le front gère sous la forme d'un clique le passage au tour du suivant des différentes tables. Toutes les 5 secondes, le front envoie une requête de mise à jour des informations des tables. Il a néanmoins fallu gérer la disponibilité des tables à chaque tour dans le cas d'un grand nombre de tables, c'est pourquoi on vérifie que la table en cours est apte à passer au tour suivant avant d'effectuer une requête qui se pourrait prématurée. Une fois les réponses reçues, ce composant lié au jeu se charge de transmettre les informations reçues à chacun des autres composants de manière dynamique en passant par des props. 
+L'architecture permet donc une bonne visiblité des composants disponibles et de leur effet au niveau visuel. Les requêtes réalisées au niveau du front (lancement de partie, nouveau tour, récupération d'informations d'une table, d'un joueur, changement de statistiques) sont envoyées par le composant représentant le jeu via un fetch. En effet, c'est notamment à travers ce composant que le front gère sous la forme d'une clock le passage au tour suivant des différentes tables. Toutes les 5 secondes, le front envoie une requête de mise à jour des informations des tables. Il a néanmoins fallu gérer la disponibilité des tables à chaque tour dans le cas d'un grand nombre de tables, c'est pourquoi on vérifie que la requête précédante est bien terminés afin que la table en cours soit apte à passer au tour suivant, avant d'effectuer une requête qui se pourrait prématurée. Une fois les réponses reçues, ce composant lié au jeu se charge de transmettre les informations reçues à chacun des autres composants de manière dynamique en passant par des props. 
 
 La disposition graphique du front est quant à elle gérée par la disposition des composants sur la partie html mais également grâce à un fichier *css* qui correspond à la construction dynamique du visuel final. 
  
