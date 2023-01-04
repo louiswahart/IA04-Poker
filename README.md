@@ -71,42 +71,76 @@ La backend et le frontend fonctionneront en local. L'adresse du frontend doit ob
 Notre architecture peut être décomposée en 4 grandes parties, le backend composé des agents joueurs, des agents tables et de l'agent serveur et du frontend. Voici une brève description de chacune de ses parties. 
 
 #### Agents Joueurs
-Explication brève du joueur
+Comme expliqué précédemment, l'agent joueur est défini par 4 principales caractéristiques qui sont la timidité, l’agressivité, la prise de risque, et la capacité de bluff (voir la Partie 1 pour des explications plus précises de ces caractéristiques). Les caractéristiques sont notées sur 100 (plus précisément de 0 à 99) et sont très souvent utilisées comme des probabilités d'action (par exemple une caractéristique de 80 pour indiquer une probabilité de 80% de chance de réaliser un certain choix, qui peut déboucher sur l'utilisation d'une autre caractéristique ou paramètre et ainsi de suite) mais pas uniquement (différents cas existes, ceux-ci étant très longs à détailler ici) ce qui permet d'avoir des joueurs qui ne font pas toujours la même chose et qui jouent vraiment selon leurs caractéristiques.
+
+Le joueur attend des informations de sa table, qui est le seul autre agent avec qui il est en communication via un channel. Lorsqu'il reçoit un message de celle-ci, 5 situations sont possibles :
+
+- La table lui indique le démarrage de la table et lui donne ses jetons, le joueur initialise alors à 0 ses différentes informations (mise actuelle, cartes, etc) et met à jour son nombre de jeton.
+
+- La table lui demande de miser (cas des grosses et petites blinds), le joueur lui renvoie alors la mise demandée (ou alors tapis si il n'a plus assez de jeton) et met à jours ses informations correspondantes.
+
+- La table lui donne un gain, alors le joueur les prend et met à jour ses informations.
+
+- La table lui donne une nouvelle distribution, le joueur récupère ses deux cartes, comprend que c'est une nouvelle partie et met à jour ses informations en conséquence.
+
+- La table lui demande de jouer et lui donne notamment la mise actuelle. Dans ce cas, le joueur va utiliser ses 4 caractéristiques décrites précédemment ainsi que sa situtation actuelle (mise actuelle, mise en cours dans la table, combien de fois on lui a demandé de jouer, etc) pour choisir sa réponse, c'est à dire son action. Ainsi selon tous les paramètres décrits précedemment, le joueur peut se coucher s'il n'ose pas jouer (par exemple, à cause de sa main pas assez forte pour lui), il peut check si sa mise actuelle est égale à la mise de la table et qu'il ne veut pas l'augmenter, il peut suivre la mise actuelle en s'alignant ou alors il peut carrément augmenter la mise en ajoutant plus.
+
+Le joueur attend donc les demandes de la table et lui répond en conséquence et selon de nombreux paramètres qu'il prend en considération lorsqu'il joue. Une fois qu'une table se ferme, le channel de communication est également fermé ce qui indique au joueur la fin de la table. Ainsi, celui-ci met à jour ses informations en conséquence.
 
 #### Agents Tables
-Explication brève de la table
+La table est l'entité qui s'occupe de regrouper des joueurs, souvent au nombre de 5, et de stocker les informations nécessaires concernant ceux-ci ainsi que les informations de la partie en cours, comme le pot actuel, la mise de chaque joueur ou encore les cartes au centre de la table. Lorsqu'un agent Table est lancé à partir de la commande 'Start', la table commence par assigner des tokens aux joueurs, puis se met en attente du signal du serveur pour commencer un nouveau tour. Au cours d'une partie, la table se charge d'envoyer tous les messages aux joueurs concernant le jeu en cours, comme le paiement des blindes, le signal que c'est à leur tour de jouer, leurs cartes ou les cartes ayant été dévoilées au centre de la table. La table s'occupe également de vérifier si un (ou plusieurs) gagnant(s) existe(nt) à la fin d'un tour.
+
 
 #### Agent Serveur
-Explication brève du serveur
+L'agent serveur est simplement constitué d'un ID et d'une adresse url. Ce constructeur est d'ailleurs appelé lors du lancement, c'est le serveur qui va permettre de faire le lien entre le front et les tables. Celui-ci s'occupe d'ailleurs de récupérer les requètes envoyées par le front, récupère les informations de ces requètes et transmet une réponse avec les informations demandées. Le front peut requêter au serveur plusieurs types d'information :
+
+- Lancer la partie avec **/play**
+- Mettre à jour les informations d'une table avec **/update**
+- Donner les informations d'une table avec **/getTable**
+- Donner les informations d'un joueur avec **/getPlayer**
+- Modifier les statistiques d'un joueur avec **/changeStats**
+
+L'ensemble de ces informations sont transmises à partir d'un serveur REST et les données sont envoyées en JSON. D'ailleurs, il a fallu faire attention à autoriser un contrôle d'accès permettant l'acceptation de données venant de l'adresse liée au front (http://localhost:3000), sinon un message d'erreur empêchait la communication.
+Lors du lancement du jeu, le serveur s'occupe de créer les joueurs et les tables et aussi de lancer l'ensemble de ces tables. De plus, à chaque tour, le serveur se charge, soit d'envoyer aux tables le tour à joueur en passant par un channel, soit si la partie est terminée, de fermer l'ensemble des tables.
 
 #### Front
-Explication brève du Front
+Le front a été construit de manière à créer un fichier par composant. Le composant principal réprésenté par le fichier *Game.js* est appelé par l'application racine React. On retrouve également un composant pour les cartes, un pour les informations liées à la sélection de la table, d'un joueur et de ses statistiques. Un autre composant permet de gérer les interactions pour jouer, mettre en pause ou choisir une nouvelle configuration. Un composant lié aux joueurs est aussi présent, ainsi qu'un composant gérant l'affichage de l'état actuel de la table. 
 
+L'architecture permet donc une bonne visiblité des composants disponibles et de leur effet au niveau visuel. Les requêtes réalisées au niveau du front (lancement de partie, nouveau tour, récupération d'informations d'une table, d'un joueur, changement de statistiques) sont envoyées par le composant représentant le jeu via un fetch. En effet, c'est notamment à travers ce composant que le front gère sous la forme d'une clock le passage au tour suivant des différentes tables. Toutes les 5 secondes, le front envoie une requête de mise à jour des informations des tables. Il a néanmoins fallu gérer la disponibilité des tables à chaque tour dans le cas d'un grand nombre de tables, c'est pourquoi on vérifie que la requête précédante est bien terminés afin que la table en cours soit apte à passer au tour suivant, avant d'effectuer une requête qui se pourrait prématurée. Une fois les réponses reçues, ce composant lié au jeu se charge de transmettre les informations reçues à chacun des autres composants de manière dynamique en passant par des props. 
+
+La disposition graphique du front est quant à elle gérée par la disposition des composants sur la partie html mais également grâce à un fichier *css* qui correspond à la construction dynamique du visuel final. 
  
 ## 3) Discussions
 
 ### Points positifs et négatifs / Améliorations possibles
 
-Positifs :
-Réalisation totalement fonctionnelle
-Parties respectant les vrais règles
-Joueur avec une certaine intelligence et réalisant de réelles actions
-Communication importante entre table et joueur
-Front fonctionnel, interaction avec l'utilisateur (choix du nb de tables, de parties, changement de table, de joueur, modification des stats, pause, reset, etc)
-Indications visuelles
+**Positifs**
+- Notre code permet de faire tout ce que nous avions prévu initialement,
+- Les parties respectent les vraies règles du poker, y compris dans les détails,
+- Les joueurs possèdent une certaine intelligence et réalisent des actions réfléchies,
+- Les communications se font à différents niveaux: entre le serveur global et les tables, ainsi qu'entre les tables et les joueurs, de manière synchronisée entre toutes les tables,
+- La partie interface est totalement fonctionnelle et permet un certain degré d'interaction avec l'utilisateur, comme le choix du nombre de tables, de parties, le changement de la table que l'on observe, de joueur, la modification des caractéristiques des joueurs, la possibilité de mettre le jeu en pause, de revenir à zero etc.,
+- Indications visuelles.
 
-Négatifs / Améliorations :
-Travail plus complexe sur l'intelligence de jeu d'un joueur, moins utiliser le hasard
-Création de joueur ayant la capacité de tricher (soit connaissant toutes les cartes ou certains peuvent communiquer entre eux)
-Amélioration visuelle du front
-Encore plus de possibilités à l'utilisateur (changer les joueurs de tables, etc)
+**Négatifs / Améliorations**
+- Il serait intéressant de travailler plus en profondeur l'intelligence de jeu d'un joueur et de moins utiliser le hasard, comme nous pouvons le faire actuellement,
+- On pourrait également permettre la création de joueur ayant la capacité de tricher (soit en connaissant toutes les cartes ou en faisant communiquer plusieurs joueurs entre eux),
+- L'interface pourrait être plus jolie,
+- Il serait aussi intéressant d'offrir encore plus de possibilités à l'utilisateur, comme de lui permettre de changer les joueurs de table.
 
 ### Analyse des méta-paramètres
-Nombre de tables
-Nombre de parties
-Timidité
-Agressivité
-Risque
-Bluff
-Nb Jetons
-Blind
+**Format du tournoi**
+> Ces éléments sont à choisir au début d'un tournoi, et ne sont pas modifiables une fois celui-ci lancé.
+- Nombre de tables: le fait de changer le nombre de tables ne change rien au déroulement interne de chaque partie, mais à partir d'un certain nombre de tables, on risque d'observer des ralentissements du système de tours.
+- Nombre de parties: on peut changer cette variable, mais les joueurs pouvant être éliminés au fil du jeu, le nombre de joueurs est voué à diminuer avec le temps.
+
+**Comportement des joueurs**
+> Il est possible de modifier les caractéristiques suivantes des joueurs au cours du tournoi, mais elles sont initialisées aléatoirement au début.
+- Timidité: Caractéristique décrivant la tendance d'un joueur à suive la mise actuelle ou à augmenter la mise.
+- Agressivité: A quel point la mise du joueur est grande quand il décide de l'augmenter.
+- Risque: Caractéristique décrivant la tendance d'un joueur à jouer (continuer de miser) selon la puissance de sa main (plus le risque est élevé, plus il jouera, même avec une main faible).
+- Bluff: Tendance à bluffer.
+
+**Variables d'une partie**
+- Nombre de jetons: Celui-ci est initialisé à 10 000 pour chaque joueur, mais ce montant n'est pas modifiable en cours de partie.
+- Blindes: Celles-ci ont été initalisées à un montant arbitraire, qui augmente plus le tournoi avance.
