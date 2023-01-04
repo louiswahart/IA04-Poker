@@ -135,7 +135,7 @@ La disposition graphique du front est quant à elle gérée par la disposition d
 - Nombre de parties: on peut changer cette variable, mais les joueurs pouvant être éliminés au fil du jeu, le nombre de joueurs est voué à diminuer avec le temps.
 
 **Comportement des joueurs**
-> Il est possible de modifier les caractéristiques suivantes des joueurs au cours du tournoi, mais elles sont initialisées aléatoirement au début.
+> Il est possible de modifier les caractéristiques suivantes des joueurs au cours du tournoi, mais elles sont initialisées aléatoirement au début. Ces caractéristiques permettent de définir la pseudo intelligence des joueurs, mais il serait peut-être judicieux d'ajouter de nouvelles caractéristiques à ceux-ci, pour les rendre plus "intelligents", mais aussi de voir les caractéristiques actuelles qui fonctionnent déjà mieux que d'autre (par exemple, établir le profil de caractéristiques qui obtient les meilleurs résultats).
 - Timidité: Caractéristique décrivant la tendance d'un joueur à suive la mise actuelle ou à augmenter la mise.
 - Agressivité: A quel point la mise du joueur est grande quand il décide de l'augmenter.
 - Risque: Caractéristique décrivant la tendance d'un joueur à jouer (continuer de miser) selon la puissance de sa main (plus le risque est élevé, plus il jouera, même avec une main faible).
